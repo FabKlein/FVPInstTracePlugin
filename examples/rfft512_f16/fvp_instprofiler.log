@@ -1,0 +1,26 @@
+telnetterminal0: Listening for serial connection on port 5000
+telnetterminal1: Listening for serial connection on port 5001
+telnetterminal2: Listening for serial connection on port 5002
+telnetterminal5: Listening for serial connection on port 5003
+
+    Ethos-U rev 136b7d75 --- Apr  8 2024 21:45:17
+    (C) COPYRIGHT 2019-2024 Arm Limited
+    ALL RIGHTS RESERVED
+
+[ChromeTrace] ELF binary detected, running nm on 'out/rfft512_f16/FVP/Release/rfft512_f16.axf'
+[ChromeTrace] Loaded 336 symbols from 'out/rfft512_f16/FVP/Release/rfft512_f16.axf'
+[InstProfiler] Symbol address range: [0x10000000, 0x1000ee6c)
+[InstProfiler] Capture function: 'main' @ 0x10002e80
+[InstProfiler] Tracing is paused — waiting for start condition.
+[InstProfiler] Writing trace to 'trace.json'
+[InstProfiler] Attached to component 'FVP_MPS3_Corstone_SSE_300.cpu0'
+[InstProfiler] Tracing started at PC=0x10002e80 count=6610
+RFFT-512 F16 input: 512 pseudo-random float16 samples
+Complex sum of output bins: re = 178.938965  im = -58.902588
+[InstProfiler] Capture function returned — finalising trace.
+[InstProfiler] Trace written to 'trace.json' (425 event(s))
+[InstProfiler] Coverage written to 'coverage.json' (34 function(s))
+[InstProfiler] Stats written to 'stats.csv' (33 function(s))
+
+Info: /OSCI/SystemC: Simulation stopped by user.
+[warning ][main@0][01 ns] Simulation stopped by user

@@ -235,6 +235,71 @@ FVP_Corstone_SSE-300_Ethos-U55 \
 -C TRACE.InstProfiler.stop-count=5000000
 ```
 
+### Simple example folder: half-precision real FFT (Cortex-M55)
+
+A minimal end-to-end example is available under `examples/rfft512_f16`.
+It builds and runs a CMSIS-DSP 512-point real FFT in `float16`, then prints the complex sum of FFT bins.
+
+From the example directory, run FVP with InstProfiler and capture `main`:
+
+```bash
+cd examples/rfft512_f16
+
+/mnt/data/fabkle01/FVPs/FVP_Corstone_SSE-300/models/Linux64_GCC-9.3/FVP_Corstone_SSE-300_Ethos-U55 \
+    -C mps3_board.visualisation.disable-visualisation=1 \
+    -C mps3_board.telnetterminal0.start_telnet=0 \
+    -C mps3_board.uart0.out_file=- \
+    -C cpu0.semihosting-enable=1 \
+    -C cpu0.semihosting-stack_base=0 \
+    -C cpu0.semihosting-heap_limit=0 \
+    --timelimit 60 \
+    -a out/rfft512_f16/FVP/Release/rfft512_f16.axf \
+    --plugin ../../InstProfiler.so \
+    -C TRACE.InstProfiler.symbol-file=out/rfft512_f16/FVP/Release/rfft512_f16.axf \
+    -C TRACE.InstProfiler.nm-tool=arm-none-eabi-nm \
+    -C TRACE.InstProfiler.capture-function=main \
+    -C TRACE.InstProfiler.output-file=trace.json \
+    -C TRACE.InstProfiler.coverage-file=coverage.json \
+    -C TRACE.InstProfiler.stats-file=stats.csv \
+    -C TRACE.InstProfiler.demangle=1 \
+    -C TRACE.InstProfiler.tid=1
+```
+
+Expected generated files in `examples/rfft512_f16`:
+- `trace.json` (Chrome Tracing / Perfetto JSON)
+- `coverage.json` (per-function coverage)
+- `stats.csv` (per-function wall/self statistics)
+
+### Optional offline HTML conversion (Catapult trace2html)
+
+If you cannot upload traces to an online viewer (for example due to privacy concerns),
+you can convert `trace.json` to a local HTML report using Catapult:
+
+```bash
+git clone https://chromium.googlesource.com/catapult </path_to/catapult>
+
+/path_to/catapult/tracing/bin/trace2html trace.json --output trace2.html
+```
+
+Then open `trace.html` locally in a browser.
+
+### Alternative workflow: FVP Tarmac plugin + conversion script
+
+An alternative way to generate a Perfetto/Chrome timeline is to use the standard FVP Tarmac plugin,
+produce a Tarmac trace file, and then convert that file into Chrome Tracing format.
+
+- FVP Tarmac plugin documentation:
+    https://developer.arm.com/documentation/100964/1131/Plug-ins-for-Fast-Models/TarmacTrace?lang=en
+- Example conversion script:
+    https://github.com/Arm-Examples/Helium-Optimization/blob/main/Performance_analysis/tools/arm_tarmac_2_chrometracing.py
+
+This approach is valid, but it usually has higher overhead than direct MTI tracing with InstProfiler:
+
+- It significantly slows down FVP simulation time.
+- It is a two-step workflow (generate Tarmac first, then post-process).
+- The intermediate Tarmac file can become massive very quickly (several Gbs)
+- Python post-processing time increases with Tarmac file size.
+
 ## Output file formats
 
 ### Chrome Tracing JSON (`output-file`)

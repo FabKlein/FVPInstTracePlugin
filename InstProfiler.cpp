@@ -818,7 +818,7 @@ void InstProfiler::TracePC(const MTI::EventClass *event_class, const MTI::EventR
                 else
                 {
                     // Silent push: mark as non-emitting so no JSON event is written.
-                    call_stack_.push_back({pre_sym, inst_count, /*emitting=*/false});
+                    call_stack_.push_back({pre_sym, inst_count, /*callee_clock=*/0, /*emitting=*/false});
                 }
             }
         }

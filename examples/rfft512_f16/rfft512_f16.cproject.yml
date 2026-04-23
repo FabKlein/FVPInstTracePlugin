@@ -1,0 +1,15 @@
+project:
+  description: RFFT 512-point float16 using CMSIS-DSP, Cortex-M55 / AC6
+
+  define:
+    - ARM_MATH_FLOAT16      # enable float16 paths in CMSIS-DSP headers
+
+  components:
+    - component: ARM::CMSIS:CORE
+    - component: ARM::Device:Startup&C Startup                # SSE-300-MPS3 startup / SystemInit
+    - component: ARM::CMSIS:DSP&Source                        # CMSIS-DSP source (includes RFFT + tables)
+
+  groups:
+    - group: Source
+      files:
+        - file: src/main.c
