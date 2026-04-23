@@ -124,10 +124,10 @@
 
 struct StackFrame
 {
-    const Symbol *sym;    ///< Pointer into SymbolTable (stable lifetime)
-    uint64_t entry_clock; ///< INST_COUNT when function was entered
+    const Symbol *sym;         ///< Pointer into SymbolTable (stable lifetime)
+    uint64_t entry_clock;      ///< INST_COUNT when function was entered
     uint64_t callee_clock = 0; ///< total ticks spent in direct callees (for self-time)
-    bool emitting = true; ///< false for frames silently pushed before capture tracing started
+    bool emitting = true;      ///< false for frames silently pushed before capture tracing started
 };
 
 // ---------------------------------------------------------------------------
@@ -266,16 +266,16 @@ class InstProfiler : public MTI::PluginInstance {
 
     // Start/stop gating parameters.
     // Empty string / 0 means the condition is not set.
-    std::string param_start_pc_ = "";            ///< Hex address string, e.g. "0x8000"
-    std::string param_stop_pc_ = "";             ///< Hex address string
-    std::string param_start_symbol_ = "";        ///< Mangled symbol name
-    std::string param_stop_symbol_ = "";         ///< Mangled symbol name
-    uint64_t param_start_count_ = 0;             ///< INST_COUNT value; 0 = not set
-    uint64_t param_stop_count_ = 0;             ///< INST_COUNT value; 0 = not set
-    std::string param_capture_function_ = "";   ///< Capture one function + all callees
-    std::string param_coverage_file_ = "";       ///< Path for per-function coverage JSON ("" = off)
-    size_t param_max_name_len_ = 128;            ///< Max demangled name chars; 0 = unlimited
-    std::string param_stats_file_ = "";          ///< Path for self/wall stats CSV ("" = off)
+    std::string param_start_pc_ = "";         ///< Hex address string, e.g. "0x8000"
+    std::string param_stop_pc_ = "";          ///< Hex address string
+    std::string param_start_symbol_ = "";     ///< Mangled symbol name
+    std::string param_stop_symbol_ = "";      ///< Mangled symbol name
+    uint64_t param_start_count_ = 0;          ///< INST_COUNT value; 0 = not set
+    uint64_t param_stop_count_ = 0;           ///< INST_COUNT value; 0 = not set
+    std::string param_capture_function_ = ""; ///< Capture one function + all callees
+    std::string param_coverage_file_ = "";    ///< Path for per-function coverage JSON ("" = off)
+    size_t param_max_name_len_ = 128;         ///< Max demangled name chars; 0 = unlimited
+    std::string param_stats_file_ = "";       ///< Path for self/wall stats CSV ("" = off)
 
     // ------------------------------------------------------------------
     // Data members — runtime state
@@ -323,6 +323,7 @@ class InstProfiler : public MTI::PluginInstance {
     // MTI field indices (resolved in RegisterSimulation)
     MTI::ValueIndex inst_pc_index_ = -1;
     MTI::ValueIndex inst_count_index_ = -1;
+    size_t pc_field_size_ = 4; ///< PC field size in bytes (4 or 8); set during RegisterSimulation
 
     /// One EventClass per attached CPU core.
     std::vector<MTI::EventClass *> event_classes_;
@@ -339,10 +340,10 @@ class InstProfiler : public MTI::PluginInstance {
 
     uint64_t start_pc_resolved_ = kNoCondition;    ///< PC to begin tracing
     uint64_t stop_pc_resolved_ = kNoCondition;     ///< PC to stop tracing
-    const Symbol *start_sym_resolved_ = nullptr;    ///< Symbol to begin tracing
-    const Symbol *stop_sym_resolved_ = nullptr;     ///< Symbol to stop tracing
-    const Symbol *capture_sym_resolved_ = nullptr;  ///< Symbol whose return ends the trace
-    uint64_t start_count_resolved_ = kNoCondition;  ///< INST_COUNT to begin
+    const Symbol *start_sym_resolved_ = nullptr;   ///< Symbol to begin tracing
+    const Symbol *stop_sym_resolved_ = nullptr;    ///< Symbol to stop tracing
+    const Symbol *capture_sym_resolved_ = nullptr; ///< Symbol whose return ends the trace
+    uint64_t start_count_resolved_ = kNoCondition; ///< INST_COUNT to begin
     uint64_t stop_count_resolved_ = kNoCondition;  ///< INST_COUNT to stop
 };
 

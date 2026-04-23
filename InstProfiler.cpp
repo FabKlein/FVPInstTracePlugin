@@ -50,24 +50,24 @@
 
 typedef enum
 {
-    PARAM_SYMBOL_FILE = 0, ///< Path to ELF binary or nm output
-    PARAM_OUTPUT_FILE,     ///< Destination JSON path
-    PARAM_DEMANGLE,        ///< "1" = demangle C++ names
-    PARAM_TID,             ///< Thread ID for Chrome Tracing
-    PARAM_PID,             ///< Process ID for Chrome Tracing
-    PARAM_NM_TOOL,         ///< nm executable (used for ELF auto-detection)
-    PARAM_TIME_SCALE,      ///< INST_COUNT divisor → microseconds
-    PARAM_START_PC,        ///< Hex PC address to begin tracing (empty = from start)
-    PARAM_STOP_PC,         ///< Hex PC address to end tracing   (empty = until end)
-    PARAM_START_SYMBOL,    ///< Symbol name to begin tracing    (empty = from start)
-    PARAM_STOP_SYMBOL,     ///< Symbol name to end tracing      (empty = until end)
-    PARAM_START_COUNT,        ///< INST_COUNT to begin tracing        ("0" = from start)
-    PARAM_STOP_COUNT,         ///< INST_COUNT to end tracing          ("0" = until end)
-    PARAM_CAPTURE_FUNCTION,   ///< Capture a single function + callees ("" = disabled)
-    PARAM_COVERAGE_FILE,      ///< Write per-function unique-PC coverage JSON ("" = disabled)
-    PARAM_MAX_NAME_LEN,       ///< Max demangled name length before falling back to mangled (0 = unlimited)
-    PARAM_STATS_FILE,         ///< Write self/wall function stats CSV ("" = disabled)
-    PARAM_COUNT               ///< Sentinel — total number of parameters
+    PARAM_SYMBOL_FILE = 0,  ///< Path to ELF binary or nm output
+    PARAM_OUTPUT_FILE,      ///< Destination JSON path
+    PARAM_DEMANGLE,         ///< "1" = demangle C++ names
+    PARAM_TID,              ///< Thread ID for Chrome Tracing
+    PARAM_PID,              ///< Process ID for Chrome Tracing
+    PARAM_NM_TOOL,          ///< nm executable (used for ELF auto-detection)
+    PARAM_TIME_SCALE,       ///< INST_COUNT divisor → microseconds
+    PARAM_START_PC,         ///< Hex PC address to begin tracing (empty = from start)
+    PARAM_STOP_PC,          ///< Hex PC address to end tracing   (empty = until end)
+    PARAM_START_SYMBOL,     ///< Symbol name to begin tracing    (empty = from start)
+    PARAM_STOP_SYMBOL,      ///< Symbol name to end tracing      (empty = until end)
+    PARAM_START_COUNT,      ///< INST_COUNT to begin tracing        ("0" = from start)
+    PARAM_STOP_COUNT,       ///< INST_COUNT to end tracing          ("0" = until end)
+    PARAM_CAPTURE_FUNCTION, ///< Capture a single function + callees ("" = disabled)
+    PARAM_COVERAGE_FILE,    ///< Write per-function unique-PC coverage JSON ("" = disabled)
+    PARAM_MAX_NAME_LEN,     ///< Max demangled name length before falling back to mangled (0 = unlimited)
+    PARAM_STATS_FILE,       ///< Write self/wall function stats CSV ("" = disabled)
+    PARAM_COUNT             ///< Sentinel — total number of parameters
 } ParamID;
 
 static const eslapi::CADIParameterInfo_t kParamInfos[PARAM_COUNT] = {
@@ -437,9 +437,8 @@ eslapi::CADIReturn_t InstProfiler::RegisterSimulation(eslapi::CAInterface *ca_in
         const MTI::EventFieldType *field_count = source->GetField("INST_COUNT");
         if (!field_count)
         {
-            fprintf(stderr,
-                    "[InstProfiler] INST source on '%s' has no INST_COUNT field.\n",
-                    sti->GetComponentTracePath(i));
+            fprintf(
+                stderr, "[InstProfiler] INST source on '%s' has no INST_COUNT field.\n", sti->GetComponentTracePath(i));
             continue;
         }
 
@@ -457,12 +456,22 @@ eslapi::CADIReturn_t InstProfiler::RegisterSimulation(eslapi::CAInterface *ca_in
         }
 
         // Resolve ValueIndex AFTER creating the EventClass (per CallTrace reference).
-        inst_pc_index_    = ec->GetValueIndex("PC");
+        inst_pc_index_ = ec->GetValueIndex("PC");
         inst_count_index_ = ec->GetValueIndex("INST_COUNT");
         if (inst_pc_index_ == -1 || inst_count_index_ == -1)
         {
             fprintf(stderr, "[InstProfiler] GetValueIndex failed on '%s'.\n", sti->GetComponentTracePath(i));
             continue;
+        }
+
+        // Query PC field size to support both AArch32 (4-byte) and AArch64 (8-byte) targets.
+        // The field_pc pointer is valid here; get its byte size.
+        pc_field_size_ = field_pc->GetSize();
+        if (pc_field_size_ != 4 && pc_field_size_ != 8)
+        {
+            fprintf(stderr, "[InstProfiler] Unexpected PC field size %zu (expected 4 or 8) on '%s'.\n",
+                    pc_field_size_, sti->GetComponentTracePath(i));
+            pc_field_size_ = 4; // fallback to 32-bit
         }
 
         // ----------------------------------------------------------
@@ -483,6 +492,19 @@ eslapi::CADIReturn_t InstProfiler::RegisterSimulation(eslapi::CAInterface *ca_in
 
     if (attached == 0)
         return Error("RegisterSimulation: could not attach to any CPU component.");
+
+    // Multi-core validation: this plugin only supports single-core profiling.
+    // If multiple INST sources are attached, field indices and call-stack state
+    // will be corrupted by interleaved callbacks. Fail loudly rather than silently
+    // produce wrong results.
+    if (attached > 1)
+        return Error(
+            "RegisterSimulation: multi-core profiling not supported. "
+            "This plugin attaches to every INST source but maintains only one call stack "
+            "and set of field indices. Interleaved instructions from different CPUs will "
+            "corrupt call/return inference, durations, coverage, and statistics. "
+            "Please profile one core at a time or modify the plugin to split runtime state "
+            "per core.");
 
     return eslapi::CADI_STATUS_OK;
 }
@@ -521,7 +543,8 @@ void InstProfiler::Finalize()
         // but carry no events and are not meaningful to the user.
         size_t open_count = 0;
         for (const auto &f : call_stack_)
-            if (f.emitting) ++open_count;
+            if (f.emitting)
+                ++open_count;
         if (open_count > 0)
             printf("[InstProfiler] Flushing %zu open call-stack frame(s) at shutdown.\n", open_count);
         PopUntil(/*resume_sym=*/nullptr, last_clock_);
@@ -543,9 +566,9 @@ void InstProfiler::Finalize()
 // ==========================================================================
 
 eslapi::CADIReturn_t InstProfiler::GetParameterInfos(uint32_t startIndex,
-                                                    uint32_t desiredNumOfParams,
-                                                    uint32_t *actualNumOfParams,
-                                                    eslapi::CADIParameterInfo_t *params)
+                                                     uint32_t desiredNumOfParams,
+                                                     uint32_t *actualNumOfParams,
+                                                     eslapi::CADIParameterInfo_t *params)
 {
     if (!actualNumOfParams || !params)
         return eslapi::CADI_STATUS_IllegalArgument;
@@ -660,8 +683,8 @@ InstProfiler::GetParameterValues(uint32_t count, uint32_t *actualRead, eslapi::C
 }
 
 eslapi::CADIReturn_t InstProfiler::SetParameterValues(uint32_t count,
-                                                     eslapi::CADIParameterValue_t *values,
-                                                     eslapi::CADIFactoryErrorMessage_t * /*error*/)
+                                                      eslapi::CADIParameterValue_t *values,
+                                                      eslapi::CADIFactoryErrorMessage_t * /*error*/)
 {
     if (!values)
         return eslapi::CADI_STATUS_IllegalArgument;
@@ -770,15 +793,24 @@ void InstProfiler::TracePC(const MTI::EventClass *event_class, const MTI::EventR
     // ----------------------------------------------------------------
     // 1. Read PC and instruction count from the trace record.
     //
-    //    PC is 64-bit to support both AArch32 (upper 32 bits will be 0)
-    //    and AArch64.  We clear bit 0 to normalise Thumb addresses.
+    //    PC field size depends on the target: AArch32 uses 4 bytes,
+    //    AArch64 uses 8 bytes.  We query the actual field size during
+    //    RegisterSimulation (pc_field_size_) to correctly read both.
+    //    We clear bit 0 to normalise Thumb addresses.
     // ----------------------------------------------------------------
-    // Read PC as uint32_t (Cortex-M is 32-bit; AArch64 is 64-bit).
-    // Use uint32_t here: Get<uint64_t> on a 4-byte field reads 4 bytes correctly
-    // on little-endian but leaves the upper word as whatever follows in memory.
-    // Reading as uint32_t and zero-extending is always safe for both widths.
-    const uint32_t raw_pc32 = record->Get<uint32_t>(event_class, inst_pc_index_);
-    const uint64_t pc = static_cast<uint64_t>(raw_pc32) & ~static_cast<uint64_t>(1); // clear Thumb bit
+    uint64_t pc;
+    if (pc_field_size_ == 8)
+    {
+        // 64-bit target (AArch64)
+        pc = record->Get<uint64_t>(event_class, inst_pc_index_);
+    }
+    else
+    {
+        // 32-bit target (AArch32 / Cortex-M); read as uint32_t and zero-extend
+        const uint32_t raw_pc32 = record->Get<uint32_t>(event_class, inst_pc_index_);
+        pc = static_cast<uint64_t>(raw_pc32);
+    }
+    pc &= ~static_cast<uint64_t>(1); // clear Thumb bit
     const uint64_t inst_count = record->Get<uint64_t>(event_class, inst_count_index_);
 
     last_clock_ = inst_count;
@@ -959,8 +991,8 @@ void InstProfiler::PopUntil(const Symbol *resume_sym, uint64_t clock)
             break; // The resuming frame stays on the stack.
 
         // Capture values before pop (reference becomes dangling after pop_back).
-        const bool is_capture_frame = (capture_sym_resolved_ != nullptr &&
-                                       call_stack_.back().sym == capture_sym_resolved_);
+        const bool is_capture_frame =
+            (capture_sym_resolved_ != nullptr && call_stack_.back().sym == capture_sym_resolved_);
         const uint64_t frame_entry = call_stack_.back().entry_clock;
 
         EmitFrame(call_stack_.back(), clock);
@@ -987,7 +1019,7 @@ void InstProfiler::EmitFrame(const StackFrame &frame, uint64_t exit_clock)
         return; // Pre-capture silent frame: do not write to JSON.
 
     // Convert raw instruction counts to microseconds using the time scale.
-    const double ts_us  = static_cast<double>(frame.entry_clock) / param_time_scale_;
+    const double ts_us = static_cast<double>(frame.entry_clock) / param_time_scale_;
     const double dur_us = static_cast<double>(exit_clock - frame.entry_clock) / param_time_scale_;
 
     // Resolve display name: demangled if requested, otherwise mangled.
@@ -1005,9 +1037,9 @@ void InstProfiler::EmitFrame(const StackFrame &frame, uint64_t exit_clock)
     {
         const uint64_t wall_ticks = exit_clock - frame.entry_clock;
         const uint64_t self_ticks = (wall_ticks >= frame.callee_clock)
-                                        ? (wall_ticks - frame.callee_clock)
-                                        : 0; // clamp: heuristic rounding should not go negative
-        auto &st       = stats_map_[frame.sym];
+            ? (wall_ticks - frame.callee_clock)
+            : 0; // clamp: heuristic rounding should not go negative
+        auto &st = stats_map_[frame.sym];
         ++st.count;
         st.wall_sum_us += dur_us;
         st.self_sum_us += static_cast<double>(self_ticks) / param_time_scale_;

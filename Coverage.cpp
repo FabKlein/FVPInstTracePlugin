@@ -77,9 +77,9 @@ void InstProfiler::WriteCoverageJson()
     struct CovEntry
     {
         const Symbol *sym;
-        size_t   unique_pcs;
+        size_t unique_pcs;
         uint64_t covered_bytes; ///< estimated from PC-delta heuristic
-        double   coverage_pct;  ///< covered_bytes / range_bytes * 100, clamped to 100
+        double coverage_pct;    ///< covered_bytes / range_bytes * 100, clamped to 100
     };
 
     std::vector<CovEntry> entries;
@@ -115,38 +115,36 @@ void InstProfiler::WriteCoverageJson()
         if (range > 0 && covered > range)
             covered = range; // heuristic over-estimate: clamp to function size
 
-        const double pct = (range > 0)
-            ? (static_cast<double>(covered) * 100.0 / static_cast<double>(range))
-            : 0.0;
+        const double pct = (range > 0) ? (static_cast<double>(covered) * 100.0 / static_cast<double>(range)) : 0.0;
 
         entries.push_back({s, sorted_pcs.size(), covered, pct < 100.0 ? pct : 100.0});
     }
 
-    std::sort(entries.begin(), entries.end(),
-              [](const CovEntry &a, const CovEntry &b) { return a.covered_bytes > b.covered_bytes; });
+    std::sort(entries.begin(), entries.end(), [](const CovEntry &a, const CovEntry &b) {
+        return a.covered_bytes > b.covered_bytes;
+    });
 
     FILE *cf = fopen(param_coverage_file_.c_str(), "w");
     if (!cf)
     {
-        fprintf(stderr,
-                "[InstProfiler] Could not open coverage file '%s' for writing.\n",
-                param_coverage_file_.c_str());
+        fprintf(
+            stderr, "[InstProfiler] Could not open coverage file '%s' for writing.\n", param_coverage_file_.c_str());
         return;
     }
 
     fprintf(cf, "[\n");
     for (size_t i = 0; i < entries.size(); ++i)
     {
-        const Symbol   *s     = entries[i].sym;
+        const Symbol *s = entries[i].sym;
         const std::string &dname = Demangle(s->name);
-        const uint64_t range  = (s->end > s->start) ? (s->end - s->start) : 0;
+        const uint64_t range = (s->end > s->start) ? (s->end - s->start) : 0;
         fprintf(cf,
-                "  {\"name\":\"%s\",\"mangled\":\"%s\","
+                "  {\"name\":%s,\"mangled\":%s,"
                 "\"addr\":\"0x%llx\",\"range_bytes\":%llu,"
                 "\"unique_pcs\":%zu,\"covered_bytes\":%llu,"
                 "\"coverage_pct\":%.1f}%s\n",
-                dname.c_str(),
-                s->name.c_str(),
+                JsonWriter::EscapeJson(dname).c_str(),
+                JsonWriter::EscapeJson(s->name).c_str(),
                 (unsigned long long)s->start,
                 (unsigned long long)range,
                 entries[i].unique_pcs,
@@ -157,9 +155,7 @@ void InstProfiler::WriteCoverageJson()
     fprintf(cf, "]\n");
     fclose(cf);
 
-    printf("[InstProfiler] Coverage written to '%s' (%zu function(s))\n",
-           param_coverage_file_.c_str(),
-           entries.size());
+    printf("[InstProfiler] Coverage written to '%s' (%zu function(s))\n", param_coverage_file_.c_str(), entries.size());
 }
 
 // End of Coverage.cpp

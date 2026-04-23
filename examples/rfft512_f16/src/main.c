@@ -32,16 +32,16 @@
  *   output[2*k+1]   = X[k].im     for k = 1 .. N/2-1
  */
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
-#include "arm_math_f16.h"   /* float16_t, arm_rfft_fast_instance_f16, ... */
+#include "arm_math_f16.h" /* float16_t, arm_rfft_fast_instance_f16, ... */
 
 /* -------------------------------------------------------------------------
  * Configuration
  * ------------------------------------------------------------------------- */
 
-#define FFT_SIZE  512u   /* must be a power of two supported by CMSIS-DSP   */
+#define FFT_SIZE 512u /* must be a power of two supported by CMSIS-DSP   */
 
 /* -------------------------------------------------------------------------
  * Buffers  (static so they land in BSS / data, not on the stack)
@@ -49,7 +49,7 @@
 
 static arm_rfft_fast_instance_f16 fft_inst;
 static float16_t input[FFT_SIZE];
-static float16_t output[FFT_SIZE];   /* N/2 complex pairs, interleaved re/im */
+static float16_t output[FFT_SIZE]; /* N/2 complex pairs, interleaved re/im */
 
 /* -------------------------------------------------------------------------
  * Pseudo-random float16 generator  (32-bit Galois LCG, reproducible)
@@ -91,7 +91,7 @@ int main(void)
      *    Nyquist     : real = output[1], imaginary = 0  (packed in [1])
      *    Bins 1..255 : real = output[2k], imag = output[2k+1]
      * ------------------------------------------------------------------ */
-    float sum_re = (float)output[0] + (float)output[1];  /* DC + Nyquist */
+    float sum_re = (float)output[0] + (float)output[1]; /* DC + Nyquist */
     float sum_im = 0.0f;
 
     for (uint32_t k = 1u; k < FFT_SIZE / 2u; ++k)

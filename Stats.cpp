@@ -87,29 +87,28 @@ void InstProfiler::WriteStatsCSV()
     for (const auto &kv : stats_map_)
         rows.push_back({kv.first, kv.second});
 
-    std::sort(rows.begin(), rows.end(),
-              [](const StatEntry &a, const StatEntry &b) {
-                  return a.st.self_sum_us > b.st.self_sum_us;
-              });
+    std::sort(rows.begin(), rows.end(), [](const StatEntry &a, const StatEntry &b) {
+        return a.st.self_sum_us > b.st.self_sum_us;
+    });
 
     FILE *sf = fopen(param_stats_file_.c_str(), "w");
     if (!sf)
     {
-        fprintf(stderr,
-                "[InstProfiler] Could not open stats file '%s' for writing.\n",
-                param_stats_file_.c_str());
+        fprintf(stderr, "[InstProfiler] Could not open stats file '%s' for writing.\n", param_stats_file_.c_str());
         return;
     }
 
     fprintf(sf, "name,count,wall_sum_us,self_sum_us,wall_avg_us,self_avg_us\n");
     for (const auto &row : rows)
     {
-        const std::string &name     = Demangle(row.sym->name);
-        const double       wall_avg = row.st.wall_sum_us / static_cast<double>(row.st.count);
-        const double       self_avg = row.st.self_sum_us / static_cast<double>(row.st.count);
-        // Wrap name in double-quotes to handle any commas in demangled names.
-        fprintf(sf, "\"%s\",%llu,%.3f,%.3f,%.3f,%.3f\n",
-                name.c_str(),
+        const std::string &name = Demangle(row.sym->name);
+        const double wall_avg = row.st.wall_sum_us / static_cast<double>(row.st.count);
+        const double self_avg = row.st.self_sum_us / static_cast<double>(row.st.count);
+        // Use JsonWriter::EscapeJson to safely escape name, then wrap in double-quotes for CSV.
+        std::string escaped_name = JsonWriter::EscapeJson(name);
+        fprintf(sf,
+                "\"%s\",%llu,%.3f,%.3f,%.3f,%.3f\n",
+                escaped_name.c_str(),
                 (unsigned long long)row.st.count,
                 row.st.wall_sum_us,
                 row.st.self_sum_us,
@@ -118,9 +117,7 @@ void InstProfiler::WriteStatsCSV()
     }
     fclose(sf);
 
-    printf("[InstProfiler] Stats written to '%s' (%zu function(s))\n",
-           param_stats_file_.c_str(),
-           rows.size());
+    printf("[InstProfiler] Stats written to '%s' (%zu function(s))\n", param_stats_file_.c_str(), rows.size());
 }
 
 // End of Stats.cpp
