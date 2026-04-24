@@ -245,7 +245,7 @@ From the example directory, run FVP with InstProfiler and capture `main`:
 ```bash
 cd examples/rfft512_f16
 
-/mnt/data/fabkle01/FVPs/FVP_Corstone_SSE-300/models/Linux64_GCC-9.3/FVP_Corstone_SSE-300_Ethos-U55 \
+FVP_Corstone_SSE-300_Ethos-U55 \
     -C mps3_board.visualisation.disable-visualisation=1 \
     -C mps3_board.telnetterminal0.start_telnet=0 \
     -C mps3_board.uart0.out_file=- \
