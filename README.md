@@ -48,8 +48,9 @@ When `capture-function` is set the plugin silently maintains the call stack **be
 | Chrome Tracing / Perfetto JSON | `output-file=<path>` (non-empty) | Chrome Tracing `"ph":"X"` events |
 | Per-function coverage | `coverage-file=<path>` | JSON array, sorted by covered bytes |
 | Per-function statistics | `stats-file=<path>` | CSV, sorted by `self_sum_us` |
+| Flamegraph folded stacks | `flamegraph-file=<path>` | Folded-stack text for [flamegraph.pl](https://github.com/brendangregg/FlameGraph) |
 
-All three are independent and can be used in any combination.  Setting none of `output-file`, `coverage-file`, or `stats-file` is valid — the plugin still attaches and runs but produces no output files.
+All three are independent and can be used in any combination.  Setting none of `output-file`, `coverage-file`, `stats-file`, or `flamegraph-file` is valid — the plugin still attaches and runs but produces no output files.
 
 The Chrome Tracing JSON is written incrementally to disk.  The file is valid even if the simulation is interrupted (Ctrl-C) because the SIGINT handler flushes all open call-stack frames and writes the closing `]` before the process exits.
 
@@ -165,6 +166,7 @@ When combining symbol-based start with `start-pc` or `start-count`, the earliest
 |---|---|---|
 | `coverage-file` | `""` | If set, write a per-function code coverage JSON to this path at the end of the run.  Each entry records unique retired PC values and an estimated byte count.  Sorted by `covered_bytes` descending.  Empty = disabled. |
 | `stats-file` | `""` | If set, write a per-function performance statistics CSV to this path.  Columns: `name`, `count`, `wall_sum_us`, `self_sum_us`, `wall_avg_us`, `self_avg_us`.  `self_sum_us` excludes time in callees.  Sorted by `self_sum_us` descending.  Empty = disabled. |
+| `flamegraph-file` | `""` | If set, write a folded-stack file compatible with Brendan Gregg’s [flamegraph.pl](https://github.com/brendangregg/FlameGraph).  Each line is `caller;callee;... count` where count is self-time in raw instruction ticks.  Pipe through `flamegraph.pl` to produce an interactive SVG.  Empty = disabled. |
 
 Both outputs are independent of `output-file` — you can produce coverage and/or statistics without writing any JSON trace.
 
@@ -265,6 +267,7 @@ FVP_Corstone_SSE-300_Ethos-U55 \
     -C TRACE.InstProfiler.output-file=trace.json \
     -C TRACE.InstProfiler.coverage-file=coverage.json \
     -C TRACE.InstProfiler.stats-file=stats.csv \
+    -C TRACE.InstProfiler.flamegraph-file=folded.txt \
     -C TRACE.InstProfiler.demangle=1 \
     -C TRACE.InstProfiler.tid=1
 ```
@@ -273,6 +276,7 @@ Expected generated files in `examples/rfft512_f16`:
 - `trace.json` (Chrome Tracing / Perfetto JSON)
 - `coverage.json` (per-function coverage)
 - `stats.csv` (per-function wall/self statistics)
+- `folded.txt` (flamegraph folded stacks — pipe through `flamegraph.pl` to get an SVG)
 
 ### Optional offline HTML conversion (Catapult trace2html)
 
@@ -345,6 +349,28 @@ name,count,wall_sum_us,self_sum_us,wall_avg_us,self_avg_us
 - `self_sum_us` — total time excluding time spent in direct callees (like Python `cProfile` `tottime`).
 - Timestamps are in the same microsecond units as the JSON trace.
 
+### Flamegraph folded stacks (`flamegraph-file`)
+
+A text file in [Brendan Gregg's folded-stack format](https://github.com/brendangregg/FlameGraph), one line per unique stack path:
+
+```
+main;process;compute 42000
+main;process;memcpy 8000
+main;init 1200
+```
+
+The count is **self-time in raw instruction ticks** (not scaled by `time-scale`).  To produce an interactive SVG flamegraph:
+
+```bash
+# Install flamegraph.pl (one-time)
+git clone https://github.com/brendangregg/FlameGraph
+
+# Generate SVG
+./FlameGraph/flamegraph.pl --countname="instruction ticks" folded.txt > flame.svg
+```
+
+Open `flame.svg` in any browser.  Click a box to zoom, Ctrl-F to search.
+
 ## Symbol file format
 
 Two `nm(1)` output formats are accepted:
@@ -374,6 +400,9 @@ Thumb bit (bit 0) is cleared on all addresses so that AArch32/Thumb symbols matc
 | `InstProfiler.h/.cpp` | MTI plugin lifecycle, parameter handling, call-stack tracking, start/stop gating, coverage accumulation, statistics accumulation |
 | `JsonWriter.h/.cpp` | Streaming Chrome Tracing JSON file writer; signal-safe emergency close |
 | `SymbolTable.h/.cpp` | Symbol loading (ELF auto-detection, nm parsing), last-hit cache + binary-search lookup |
+| `Coverage.cpp` | Per-function code coverage JSON output |
+| `Stats.cpp` | Per-function self/wall-time statistics CSV output |
+| `Flamegraph.cpp` | Folded-stack flamegraph output for flamegraph.pl |
 | `Makefile` | Build rules |
 
 ## Limitations

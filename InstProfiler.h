@@ -110,6 +110,7 @@
 #include <atomic>
 #include <csignal> // sigaction
 #include <cstdint>
+#include <map>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -258,6 +259,11 @@ class InstProfiler : public MTI::PluginInstance {
     /// Called from Finalize().
     void WriteStatsCSV();
 
+    /// Write folded-stack flamegraph input to param_flamegraph_file_.
+    /// No-op when flamegraph_enabled_ is false or folded_stacks_ is empty.
+    /// Called from Finalize().
+    void WriteFlamegraphFolded();
+
     /// If enabled by quit-on-stop, terminate the simulation process after
     /// tracing has been finalised by a stop condition.
     void ExitSimulationIfRequested(const char *reason);
@@ -287,6 +293,7 @@ class InstProfiler : public MTI::PluginInstance {
     std::string param_coverage_file_ = "";    ///< Path for per-function coverage JSON ("" = off)
     size_t param_max_name_len_ = 128;         ///< Max demangled name chars; 0 = unlimited
     std::string param_stats_file_ = "";       ///< Path for self/wall stats CSV ("" = off)
+    std::string param_flamegraph_file_ = "";  ///< Path for folded-stack flamegraph ("" = off)
 
     // ------------------------------------------------------------------
     // Data members — runtime state
@@ -319,6 +326,12 @@ class InstProfiler : public MTI::PluginInstance {
     };
     bool stats_enabled_ = false;
     std::unordered_map<const Symbol *, FuncStats> stats_map_;
+
+    /// Folded-stack accumulator for flamegraph output.
+    /// Key: semicolon-separated stack path ("func1;func2;func3").
+    /// Value: total self-time in raw instruction ticks.
+    bool flamegraph_enabled_ = false;
+    std::map<std::string, uint64_t> folded_stacks_;
 
     /// Per-symbol set of unique PCs retired during the trace.
     /// Only populated when coverage_enabled_ is true.

@@ -79,6 +79,7 @@ typedef enum
     PARAM_COVERAGE_FILE,      ///< Write per-function unique-PC coverage JSON ("" = disabled)
     PARAM_MAX_NAME_LEN,       ///< Max demangled name length (0 = unlimited)
     PARAM_STATS_FILE,         ///< Write self/wall function stats CSV ("" = disabled)
+    PARAM_FLAMEGRAPH_FILE,    ///< Write folded-stack flamegraph input ("" = disabled)
     PARAM_COUNT               ///< Sentinel — total number of parameters
 } ParamID;
 
@@ -303,6 +304,20 @@ static const eslapi::CADIParameterInfo_t kParamInfos[PARAM_COUNT] = {
                                 "Columns: name, count, wall_sum_us, self_sum_us, wall_avg_us, self_avg_us. "
                                 "self_sum_us excludes time spent in callees. "
                                 "Sorted by self_sum_us descending.  Empty string = disabled (default).",
+                                false,
+                                0,
+                                0,
+                                0,
+                                ""),
+
+    eslapi::CADIParameterInfo_t(PARAM_FLAMEGRAPH_FILE,
+                                "flamegraph-file",
+                                eslapi::CADI_PARAM_STRING,
+                                "If set, write a folded-stack file compatible with Brendan Gregg's "
+                                "flamegraph.pl (https://github.com/brendangregg/FlameGraph). "
+                                "Each line is 'caller;callee;... count' where count is self-time "
+                                "in instruction ticks.  Pipe the output through flamegraph.pl to "
+                                "produce an interactive SVG.  Empty string = disabled (default).",
                                 false,
                                 0,
                                 0,
@@ -596,6 +611,7 @@ void InstProfiler::Finalize()
 
     WriteCoverageJson();
     WriteStatsCSV();
+    WriteFlamegraphFolded();
 }
 
 // ==========================================================================
@@ -713,6 +729,9 @@ InstProfiler::GetParameterValues(uint32_t count, uint32_t *actualRead, eslapi::C
         case PARAM_STATS_FILE:
             copy_str(out[i].stringValue, param_stats_file_);
             break;
+        case PARAM_FLAMEGRAPH_FILE:
+            copy_str(out[i].stringValue, param_flamegraph_file_);
+            break;
         default:
             if (actualRead)
                 *actualRead = i;
@@ -811,6 +830,10 @@ eslapi::CADIReturn_t InstProfiler::ApplyParameters(uint32_t count, eslapi::CADIP
         case PARAM_STATS_FILE:
             param_stats_file_ = val;
             stats_enabled_ = !val.empty();
+            break;
+        case PARAM_FLAMEGRAPH_FILE:
+            param_flamegraph_file_ = val;
+            flamegraph_enabled_ = !val.empty();
             break;
         default:
             fprintf(stderr, "[InstProfiler] Unknown parameter ID %u\n", values[i].parameterID);
@@ -1118,16 +1141,43 @@ void InstProfiler::EmitFrame(const StackFrame &frame, uint64_t exit_clock)
 
     // Accumulate self/wall statistics when stats-file is configured.
     // Note: stats accumulate regardless of whether JSON output is enabled.
+    const uint64_t wall_ticks = exit_clock - frame.entry_clock;
+    const uint64_t self_ticks = (wall_ticks >= frame.callee_clock)
+        ? (wall_ticks - frame.callee_clock)
+        : 0; // clamp: heuristic rounding should not go negative
+
     if (stats_enabled_)
     {
-        const uint64_t wall_ticks = exit_clock - frame.entry_clock;
-        const uint64_t self_ticks = (wall_ticks >= frame.callee_clock)
-            ? (wall_ticks - frame.callee_clock)
-            : 0; // clamp: heuristic rounding should not go negative
         auto &st = stats_map_[frame.sym];
         ++st.count;
         st.wall_sum_us += dur_us;
         st.self_sum_us += static_cast<double>(self_ticks) / param_time_scale_;
+    }
+
+    // Accumulate folded-stack data for flamegraph output.
+    // Build the full stack path: "caller1;caller2;...;this_func"
+    // using display names (demangled if enabled).
+    // self_ticks is the count — flamegraph.pl interprets it as "samples".
+    if (flamegraph_enabled_ && self_ticks > 0)
+    {
+        std::string path;
+        // Frames below the current one in call_stack_ are callers.
+        // The current frame (being emitted) is still on the stack at this point
+        // but we use frame.sym directly — callers are everything below it.
+        for (const auto &f : call_stack_)
+        {
+            if (f.sym == frame.sym)
+                break; // stop before the frame being emitted
+            if (!f.emitting)
+                continue; // skip silent pre-capture frames
+            if (!path.empty())
+                path += ';';
+            path += Demangle(f.sym->name);
+        }
+        if (!path.empty())
+            path += ';';
+        path += display_name;
+        folded_stacks_[path] += self_ticks;
     }
 }
 

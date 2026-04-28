@@ -29,6 +29,7 @@ CXXFLAGS = -std=c++14 -Wall -Wextra -O2 -fPIC
 # Source files (one module per concern)
 SRCS = InstProfiler.cpp \
        Coverage.cpp    \
+       Flamegraph.cpp  \
        Stats.cpp       \
        JsonWriter.cpp  \
        SymbolTable.cpp
