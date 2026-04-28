@@ -73,6 +73,10 @@
  *   stop-symbol   Symbol name to stop tracing.   Default: (until end)
  *   start-count   INST_COUNT to begin tracing.   Default: 0 (from start)
  *   stop-count    INST_COUNT to stop tracing.    Default: 0 (until end)
+ *   start-occurrence  Start trace on the Nth entry to start-symbol or
+ *                 capture-function.              Default: 1
+ *   quit-on-stop  "1" exits simulation when tracing stops (stop-* or
+ *                 capture-function return).       Default: 0
  *
  * Start/stop semantics
  * --------------------
@@ -229,6 +233,7 @@ class InstProfiler : public MTI::PluginInstance {
 
     /// Demangle @p mangled using abi::__cxa_demangle.
     /// Returns the original name if demangling fails or is disabled.
+    /// When max-name-len is set, long demangled names are truncated for display.
     /// Results are cached in demangle_cache_ to avoid repeated mallocs.
     const std::string &Demangle(const std::string &mangled);
 
@@ -253,6 +258,10 @@ class InstProfiler : public MTI::PluginInstance {
     /// Called from Finalize().
     void WriteStatsCSV();
 
+    /// If enabled by quit-on-stop, terminate the simulation process after
+    /// tracing has been finalised by a stop condition.
+    void ExitSimulationIfRequested(const char *reason);
+
     // ------------------------------------------------------------------
     // Data members — parameters
     // ------------------------------------------------------------------
@@ -273,6 +282,8 @@ class InstProfiler : public MTI::PluginInstance {
     uint64_t param_start_count_ = 0;          ///< INST_COUNT value; 0 = not set
     uint64_t param_stop_count_ = 0;           ///< INST_COUNT value; 0 = not set
     std::string param_capture_function_ = ""; ///< Capture one function + all callees
+    uint64_t param_capture_occurrence_ = 1;   ///< Nth entry for start-symbol/capture-function (1 = first)
+    bool param_quit_on_stop_ = false;         ///< Exit simulation when tracing stops
     std::string param_coverage_file_ = "";    ///< Path for per-function coverage JSON ("" = off)
     size_t param_max_name_len_ = 128;         ///< Max demangled name chars; 0 = unlimited
     std::string param_stats_file_ = "";       ///< Path for self/wall stats CSV ("" = off)
@@ -345,6 +356,12 @@ class InstProfiler : public MTI::PluginInstance {
     const Symbol *capture_sym_resolved_ = nullptr; ///< Symbol whose return ends the trace
     uint64_t start_count_resolved_ = kNoCondition; ///< INST_COUNT to begin
     uint64_t stop_count_resolved_ = kNoCondition;  ///< INST_COUNT to stop
+
+    /// Number of entries observed for start_sym_resolved_ while tracing is paused.
+    uint64_t start_symbol_seen_count_ = 0;
+
+    /// Last symbol seen while tracing is paused (used to detect symbol entry edges).
+    const Symbol *last_wait_symbol_ = nullptr;
 };
 
 // ---------------------------------------------------------------------------

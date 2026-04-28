@@ -56,9 +56,8 @@
  *   "my_function",1024,18432.000,14208.000,18.000,13.875
  *   ...
  *
- * Names that contain commas or double-quotes are wrapped in double-quotes;
- * no escaping of the content is done (function names almost never contain
- * these characters).
+ * Names are wrapped in double-quotes and embedded double-quotes are escaped
+ * by doubling them, per CSV rules.
  */
 
 #include "InstProfiler.h"
@@ -66,6 +65,24 @@
 #include <algorithm> // std::sort
 #include <cstdio>    // fopen, fprintf, fclose
 #include <vector>
+
+namespace {
+
+std::string EscapeCsv(const std::string &value)
+{
+    std::string escaped;
+    escaped.reserve(value.size() + 8);
+    for (char ch : value)
+    {
+        if (ch == '"')
+            escaped += "\"\"";
+        else
+            escaped += ch;
+    }
+    return escaped;
+}
+
+} // namespace
 
 // ==========================================================================
 // ChromeTrace::WriteStatsCSV
@@ -104,8 +121,7 @@ void InstProfiler::WriteStatsCSV()
         const std::string &name = Demangle(row.sym->name);
         const double wall_avg = row.st.wall_sum_us / static_cast<double>(row.st.count);
         const double self_avg = row.st.self_sum_us / static_cast<double>(row.st.count);
-        // Use JsonWriter::EscapeJson to safely escape name, then wrap in double-quotes for CSV.
-        std::string escaped_name = JsonWriter::EscapeJson(name);
+        std::string escaped_name = EscapeCsv(name);
         fprintf(sf,
                 "\"%s\",%llu,%.3f,%.3f,%.3f,%.3f\n",
                 escaped_name.c_str(),
@@ -119,5 +135,4 @@ void InstProfiler::WriteStatsCSV()
 
     printf("[InstProfiler] Stats written to '%s' (%zu function(s))\n", param_stats_file_.c_str(), rows.size());
 }
-
 // End of Stats.cpp

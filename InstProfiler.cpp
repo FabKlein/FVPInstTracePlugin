@@ -35,11 +35,21 @@
 
 #include <algorithm> // std::copy, std::find_if
 #include <atomic>
+#include <cctype>  // std::tolower
 #include <csignal> // sigaction, SIGINT, SIGTERM
 #include <cstdio>
 #include <cstdlib>  // strtol, strtod
 #include <cstring>  // strncpy, strcmp
 #include <cxxabi.h> // abi::__cxa_demangle  (GCC / Clang)
+
+static bool ParseBoolParam(const std::string &val)
+{
+    std::string lower = val;
+    for (char &c : lower)
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+
+    return (lower == "1" || lower == "true" || lower == "yes" || lower == "on");
+}
 
 // ==========================================================================
 // CADI parameter descriptors
@@ -50,24 +60,26 @@
 
 typedef enum
 {
-    PARAM_SYMBOL_FILE = 0,  ///< Path to ELF binary or nm output
-    PARAM_OUTPUT_FILE,      ///< Destination JSON path
-    PARAM_DEMANGLE,         ///< "1" = demangle C++ names
-    PARAM_TID,              ///< Thread ID for Chrome Tracing
-    PARAM_PID,              ///< Process ID for Chrome Tracing
-    PARAM_NM_TOOL,          ///< nm executable (used for ELF auto-detection)
-    PARAM_TIME_SCALE,       ///< INST_COUNT divisor → microseconds
-    PARAM_START_PC,         ///< Hex PC address to begin tracing (empty = from start)
-    PARAM_STOP_PC,          ///< Hex PC address to end tracing   (empty = until end)
-    PARAM_START_SYMBOL,     ///< Symbol name to begin tracing    (empty = from start)
-    PARAM_STOP_SYMBOL,      ///< Symbol name to end tracing      (empty = until end)
-    PARAM_START_COUNT,      ///< INST_COUNT to begin tracing        ("0" = from start)
-    PARAM_STOP_COUNT,       ///< INST_COUNT to end tracing          ("0" = until end)
-    PARAM_CAPTURE_FUNCTION, ///< Capture a single function + callees ("" = disabled)
-    PARAM_COVERAGE_FILE,    ///< Write per-function unique-PC coverage JSON ("" = disabled)
-    PARAM_MAX_NAME_LEN,     ///< Max demangled name length before falling back to mangled (0 = unlimited)
-    PARAM_STATS_FILE,       ///< Write self/wall function stats CSV ("" = disabled)
-    PARAM_COUNT             ///< Sentinel — total number of parameters
+    PARAM_SYMBOL_FILE = 0,    ///< Path to ELF binary or nm output
+    PARAM_OUTPUT_FILE,        ///< Destination JSON path
+    PARAM_DEMANGLE,           ///< "1" = demangle C++ names
+    PARAM_TID,                ///< Thread ID for Chrome Tracing
+    PARAM_PID,                ///< Process ID for Chrome Tracing
+    PARAM_NM_TOOL,            ///< nm executable (used for ELF auto-detection)
+    PARAM_TIME_SCALE,         ///< INST_COUNT divisor → microseconds
+    PARAM_START_PC,           ///< Hex PC address to begin tracing (empty = from start)
+    PARAM_STOP_PC,            ///< Hex PC address to end tracing   (empty = until end)
+    PARAM_START_SYMBOL,       ///< Symbol name to begin tracing    (empty = from start)
+    PARAM_STOP_SYMBOL,        ///< Symbol name to end tracing      (empty = until end)
+    PARAM_START_COUNT,        ///< INST_COUNT to begin tracing        ("0" = from start)
+    PARAM_STOP_COUNT,         ///< INST_COUNT to end tracing          ("0" = until end)
+    PARAM_CAPTURE_FUNCTION,   ///< Capture a single function + callees ("" = disabled)
+    PARAM_CAPTURE_OCCURRENCE, ///< Start on Nth entry for start-symbol/capture-function
+    PARAM_QUIT_ON_STOP,       ///< "1" exits simulation when tracing stops
+    PARAM_COVERAGE_FILE,      ///< Write per-function unique-PC coverage JSON ("" = disabled)
+    PARAM_MAX_NAME_LEN,       ///< Max demangled name length (0 = unlimited)
+    PARAM_STATS_FILE,         ///< Write self/wall function stats CSV ("" = disabled)
+    PARAM_COUNT               ///< Sentinel — total number of parameters
 } ParamID;
 
 static const eslapi::CADIParameterInfo_t kParamInfos[PARAM_COUNT] = {
@@ -234,6 +246,30 @@ static const eslapi::CADIParameterInfo_t kParamInfos[PARAM_COUNT] = {
                                 0,
                                 ""),
 
+    eslapi::CADIParameterInfo_t(PARAM_CAPTURE_OCCURRENCE,
+                                "start-occurrence",
+                                eslapi::CADI_PARAM_STRING,
+                                "Start tracing on the Nth entry to start-symbol or capture-function. "
+                                "Use '1' for first occurrence (default), '2' for second, etc. "
+                                "Ignored when symbol-based start conditions are not used.",
+                                false,
+                                0,
+                                0,
+                                0,
+                                "1"),
+
+    eslapi::CADIParameterInfo_t(PARAM_QUIT_ON_STOP,
+                                "quit-on-stop",
+                                eslapi::CADI_PARAM_STRING,
+                                "Set to '1' to terminate the simulation process once tracing stops "
+                                "due to stop-pc, stop-symbol, stop-count, or capture-function return. "
+                                "Default: 0 (disabled).",
+                                false,
+                                0,
+                                0,
+                                0,
+                                "0"),
+
     eslapi::CADIParameterInfo_t(PARAM_COVERAGE_FILE,
                                 "coverage-file",
                                 eslapi::CADI_PARAM_STRING,
@@ -251,8 +287,8 @@ static const eslapi::CADIParameterInfo_t kParamInfos[PARAM_COUNT] = {
                                 "max-name-len",
                                 eslapi::CADI_PARAM_STRING,
                                 "Maximum length (in characters) of a demangled C++ symbol name in the "
-                                "trace and coverage output.  If a demangled name exceeds this limit the "
-                                "original mangled name is used instead (no truncation).  "
+                                "trace and coverage output.  If a demangled name exceeds this limit it is "
+                                "truncated for display after demangling.  "
                                 "Set to '0' for unlimited.  Default: 128.",
                                 false,
                                 0,
@@ -469,8 +505,10 @@ eslapi::CADIReturn_t InstProfiler::RegisterSimulation(eslapi::CAInterface *ca_in
         pc_field_size_ = field_pc->GetSize();
         if (pc_field_size_ != 4 && pc_field_size_ != 8)
         {
-            fprintf(stderr, "[InstProfiler] Unexpected PC field size %zu (expected 4 or 8) on '%s'.\n",
-                    pc_field_size_, sti->GetComponentTracePath(i));
+            fprintf(stderr,
+                    "[InstProfiler] Unexpected PC field size %zu (expected 4 or 8) on '%s'.\n",
+                    pc_field_size_,
+                    sti->GetComponentTracePath(i));
             pc_field_size_ = 4; // fallback to 32-bit
         }
 
@@ -498,13 +536,12 @@ eslapi::CADIReturn_t InstProfiler::RegisterSimulation(eslapi::CAInterface *ca_in
     // will be corrupted by interleaved callbacks. Fail loudly rather than silently
     // produce wrong results.
     if (attached > 1)
-        return Error(
-            "RegisterSimulation: multi-core profiling not supported. "
-            "This plugin attaches to every INST source but maintains only one call stack "
-            "and set of field indices. Interleaved instructions from different CPUs will "
-            "corrupt call/return inference, durations, coverage, and statistics. "
-            "Please profile one core at a time or modify the plugin to split runtime state "
-            "per core.");
+        return Error("RegisterSimulation: multi-core profiling not supported. "
+                     "This plugin attaches to every INST source but maintains only one call stack "
+                     "and set of field indices. Interleaved instructions from different CPUs will "
+                     "corrupt call/return inference, durations, coverage, and statistics. "
+                     "Please profile one core at a time or modify the plugin to split runtime state "
+                     "per core.");
 
     return eslapi::CADI_STATUS_OK;
 }
@@ -661,6 +698,12 @@ InstProfiler::GetParameterValues(uint32_t count, uint32_t *actualRead, eslapi::C
         case PARAM_CAPTURE_FUNCTION:
             copy_str(out[i].stringValue, param_capture_function_);
             break;
+        case PARAM_CAPTURE_OCCURRENCE:
+            snprintf(out[i].stringValue, kBufSize, "%llu", (unsigned long long)param_capture_occurrence_);
+            break;
+        case PARAM_QUIT_ON_STOP:
+            copy_str(out[i].stringValue, param_quit_on_stop_ ? "1" : "0");
+            break;
         case PARAM_COVERAGE_FILE:
             copy_str(out[i].stringValue, param_coverage_file_);
             break;
@@ -713,7 +756,7 @@ eslapi::CADIReturn_t InstProfiler::ApplyParameters(uint32_t count, eslapi::CADIP
             param_output_file_ = val;
             break;
         case PARAM_DEMANGLE:
-            param_demangle_ = (val == "1");
+            param_demangle_ = ParseBoolParam(val);
             break;
         case PARAM_TID:
             param_tid_ = static_cast<int>(strtol(val.c_str(), nullptr, 10));
@@ -749,6 +792,14 @@ eslapi::CADIReturn_t InstProfiler::ApplyParameters(uint32_t count, eslapi::CADIP
             break;
         case PARAM_CAPTURE_FUNCTION:
             param_capture_function_ = val;
+            break;
+        case PARAM_CAPTURE_OCCURRENCE:
+            param_capture_occurrence_ = strtoull(val.c_str(), nullptr, 10);
+            if (param_capture_occurrence_ == 0)
+                param_capture_occurrence_ = 1;
+            break;
+        case PARAM_QUIT_ON_STOP:
+            param_quit_on_stop_ = ParseBoolParam(val);
             break;
         case PARAM_COVERAGE_FILE:
             param_coverage_file_ = val;
@@ -869,8 +920,26 @@ void InstProfiler::TracePC(const MTI::EventClass *event_class, const MTI::EventR
         if (!start && start_sym_resolved_ != nullptr)
         {
             const Symbol *sym_check = symbol_table_.FindSymbol(pc);
-            if (sym_check == start_sym_resolved_)
-                start = true;
+
+            // Count symbol ENTRY edges, not instructions. This allows choosing
+            // the Nth invocation when a symbol executes multiple times.
+            const bool entered_target = (sym_check == start_sym_resolved_ && last_wait_symbol_ != start_sym_resolved_);
+            if (entered_target)
+            {
+                ++start_symbol_seen_count_;
+                if (start_symbol_seen_count_ >= param_capture_occurrence_)
+                {
+                    start = true;
+                }
+                else
+                {
+                    printf("[InstProfiler] Start symbol seen (%llu/%llu) — waiting for requested occurrence.\n",
+                           (unsigned long long)start_symbol_seen_count_,
+                           (unsigned long long)param_capture_occurrence_);
+                }
+            }
+
+            last_wait_symbol_ = sym_check;
         }
 
         if (!start)
@@ -905,12 +974,14 @@ void InstProfiler::TracePC(const MTI::EventClass *event_class, const MTI::EventR
                (unsigned long long)pc,
                (unsigned long long)inst_count);
         Finalize();
+        ExitSimulationIfRequested("stop-pc");
         return;
     }
     if (stop_count_resolved_ != kNoCondition && inst_count >= stop_count_resolved_)
     {
         printf("[InstProfiler] Tracing stopped at count=%llu\n", (unsigned long long)inst_count);
         Finalize();
+        ExitSimulationIfRequested("stop-count");
         return;
     }
     // ----------------------------------------------------------------
@@ -927,6 +998,7 @@ void InstProfiler::TracePC(const MTI::EventClass *event_class, const MTI::EventR
                sym->name.c_str(),
                (unsigned long long)inst_count);
         Finalize();
+        ExitSimulationIfRequested("stop-symbol");
         return;
     }
 
@@ -1008,9 +1080,22 @@ void InstProfiler::PopUntil(const Symbol *resume_sym, uint64_t clock)
         {
             printf("[InstProfiler] Capture function returned — finalising trace.\n");
             Finalize();
+            ExitSimulationIfRequested("capture-function return");
             return;
         }
     }
+}
+
+void InstProfiler::ExitSimulationIfRequested(const char *reason)
+{
+    if (!param_quit_on_stop_)
+        return;
+
+    printf("[InstProfiler] quit-on-stop enabled — terminating simulation (%s).\n", reason);
+
+    // Raise SIGTERM so the simulator exits via its normal signal path.
+    // Our signal handler will run Finalize() again, which is idempotent.
+    raise(SIGTERM);
 }
 
 void InstProfiler::EmitFrame(const StackFrame &frame, uint64_t exit_clock)
@@ -1079,10 +1164,16 @@ const std::string &InstProfiler::Demangle(const std::string &mangled)
         demangled = mangled;
     }
 
-    // If the demangled name exceeds the configured limit, fall back to the
-    // mangled name (which is always compact and unambiguous).
+    // If the demangled name exceeds the configured limit, truncate it for
+    // display after demangling. This preserves readable C++ names instead of
+    // falling back to the original mangled spelling.
     if (param_max_name_len_ > 0 && demangled.size() > param_max_name_len_)
-        demangled = mangled;
+    {
+        if (param_max_name_len_ <= 3)
+            demangled.resize(param_max_name_len_);
+        else
+            demangled = demangled.substr(0, param_max_name_len_ - 3) + "...";
+    }
 
     // Store in cache and return a reference to the cached value.
     // (C++14 compatible: no structured bindings)
@@ -1187,6 +1278,14 @@ void InstProfiler::ResolveGatingConditions()
         stop_count_resolved_ = param_stop_count_;
         printf("[InstProfiler] Stop condition: INST_COUNT >= %llu\n", (unsigned long long)stop_count_resolved_);
     }
+    if (param_capture_occurrence_ > 1)
+    {
+        printf("[InstProfiler] start-occurrence: %llu\n", (unsigned long long)param_capture_occurrence_);
+    }
+    if (param_quit_on_stop_)
+    {
+        printf("[InstProfiler] quit-on-stop: enabled\n");
+    }
 
     // ----------------------------------------------------------------
     // capture-function: convenience shortcut that combines start-symbol
@@ -1219,6 +1318,10 @@ void InstProfiler::ResolveGatingConditions()
     bool has_start_cond = (start_pc_resolved_ != kNoCondition) || (start_sym_resolved_ != nullptr) ||
         (start_count_resolved_ != kNoCondition);
     tracing_active_ = !has_start_cond;
+
+    // Reset paused-tracing symbol edge tracking each time conditions are resolved.
+    start_symbol_seen_count_ = 0;
+    last_wait_symbol_ = nullptr;
 
     if (!tracing_active_)
         printf("[InstProfiler] Tracing is paused — waiting for start condition.\n");

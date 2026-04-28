@@ -139,7 +139,7 @@ void InstProfiler::WriteCoverageJson()
         const std::string &dname = Demangle(s->name);
         const uint64_t range = (s->end > s->start) ? (s->end - s->start) : 0;
         fprintf(cf,
-                "  {\"name\":%s,\"mangled\":%s,"
+                "  {\"name\":\"%s\",\"mangled\":\"%s\","
                 "\"addr\":\"0x%llx\",\"range_bytes\":%llu,"
                 "\"unique_pcs\":%zu,\"covered_bytes\":%llu,"
                 "\"coverage_pct\":%.1f}%s\n",

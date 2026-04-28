@@ -133,7 +133,7 @@ All parameters are passed as strings via `-C TRACE.InstProfiler.<name>=<value>`.
 | `symbol-file` | `debug.sym` | Path to an ELF binary or `nm(1)` text output.  If the file starts with the ELF magic bytes, the plugin runs `nm-tool` on it automatically. |
 | `output-file` | `""` | Destination path for the Chrome Tracing JSON.  **Empty by default** — no JSON file is written unless this parameter is set.  Useful when you only need coverage or statistics output. |
 | `demangle` | `0` | Set to `1` to demangle C++ symbol names using `abi::__cxa_demangle`.  Results are cached so there is no per-instruction overhead after the first call. |
-| `max-name-len` | `128` | Maximum length (characters) of a demangled C++ name used in all output files.  If a demangled name exceeds this limit the original **mangled** name is used instead (no truncation).  Set to `0` for unlimited. |
+| `max-name-len` | `128` | Maximum length (characters) of a demangled C++ name used in all output files.  If a demangled name exceeds this limit it is truncated for display after demangling.  Set to `0` for unlimited. |
 | `tid` | `1` | Thread ID written into every event.  Use different values when attaching to multiple CPUs. |
 | `pid` | `1` | Process ID written into every event. |
 | `nm-tool` | `nm` | `nm` executable used when `symbol-file` is an ELF binary.  Set to e.g. `arm-none-eabi-nm` for bare-metal binaries. |
@@ -142,6 +142,8 @@ All parameters are passed as strings via `-C TRACE.InstProfiler.<name>=<value>`.
 ### Start/stop gating parameters
 
 By default tracing begins at the very first instruction and runs until the simulation ends.  Use the parameters below to record only a window of interest.  **Any** start condition activates tracing; **any** stop condition ends it — whichever fires first wins.
+
+When combining symbol-based start with `start-pc` or `start-count`, the earliest condition still wins.  This means `start-pc`/`start-count` can start tracing before the requested symbol occurrence is reached.
 
 | Parameter | Default | Description |
 |---|---|---|
@@ -152,6 +154,8 @@ By default tracing begins at the very first instruction and runs until the simul
 | `start-count` | `0` | `INST_COUNT` value at which to begin recording (`0` = disabled). |
 | `stop-count` | `0` | `INST_COUNT` value at which to stop recording (`0` = disabled). |
 | `capture-function` | `""` | **Mangled** symbol name of a single function to capture in isolation. Tracing starts on first entry, stops automatically when the function returns. All callees are included. Simpler alternative to `start-symbol` + `stop-symbol`. |
+| `start-occurrence` | `1` | Start tracing on the Nth entry to `start-symbol` or `capture-function` (`1` = first call, `2` = second call, etc.). Useful when symbols are hit repeatedly during warm-up/looping phases. |
+| `quit-on-stop` | `0` | Set to `1` to terminate the simulation process when tracing stops because of `stop-pc`, `stop-symbol`, `stop-count`, or capture-function return. |
 
 > **Mangled vs demangled names:** `start-symbol`, `stop-symbol`, and `capture-function` always take the **mangled** name as output by `nm` without `--demangle`.  Use `nm --print-size my_app.axf | grep my_function` to find it.
 
@@ -206,7 +210,7 @@ FVP_Corstone_SSE-300_Ethos-U55 \
     -C 'TRACE.InstProfiler.capture-function=_ZN10executorch7runtime6Method19execute_instructionEv'
 ```
 
-The FVP runs at full speed until the function is first entered, records everything inside it, then finalises the trace automatically when it returns.  The demangled name appears as the root span in Perfetto.
+The FVP runs at full speed until the configured occurrence of the function is entered (`start-occurrence`, default 1), records everything inside it, then finalises the trace automatically when it returns.  The demangled name appears as the root span in Perfetto.
 
 ### Trace only one function by address window
 
@@ -226,7 +230,7 @@ FVP_Corstone_SSE-300_Ethos-U55 \
     -C TRACE.InstProfiler.output-file=run_inference.json
 ```
 
-> Using the same symbol for both `start-symbol` and `stop-symbol` records the **first call** to that function and stops when it returns (i.e. when the callee pops back to the caller and re-enters the same symbol from the call stack).
+> Using the same symbol for both `start-symbol` and `stop-symbol` records one call to that function (the first by default, or the Nth with `start-occurrence`) and stops when it returns (i.e. when the callee pops back to the caller and re-enters the same symbol from the call stack).
 
 ### Trace by instruction window
 
