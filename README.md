@@ -284,6 +284,11 @@ Expected generated files in `examples/rfft512_f16`:
 - `folded.txt` (flamegraph folded stacks — pipe through `flamegraph.pl` to get an SVG)
 - `coverage.info` (LCOV tracefile — pipe through `genhtml` to get an HTML report)
 
+Pre-generated outputs from this example are checked into the repository.  View them online:
+- [Perfetto trace](https://ui.perfetto.dev/#!/?url=https://raw.githubusercontent.com/FabKlein/FVPInstTracePlugin/main/examples/rfft512_f16/trace.json) — interactive timeline in Perfetto UI
+- [LCOV coverage report](https://htmlpreview.github.io/?https://github.com/FabKlein/FVPInstTracePlugin/blob/main/examples/rfft512_f16/coverage_html/index.html) — source-line coverage from genhtml
+- [Flamegraph SVG](https://github.com/FabKlein/FVPInstTracePlugin/blob/main/examples/rfft512_f16/flame.svg) — interactive flamegraph
+
 ### Optional offline HTML conversion (Catapult trace2html)
 
 If you cannot upload traces to an online viewer (for example due to privacy concerns),
