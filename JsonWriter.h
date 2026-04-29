@@ -53,7 +53,17 @@
 #include <cstdint>
 #include <cstdio> // FILE*
 #include <string>
+
+// Windows compatibility: <unistd.h> does not exist on MSVC.
+// write() / fsync() / fileno() have underscore-prefixed equivalents in <io.h>.
+#ifdef _WIN32
+#include <io.h> // _write, _commit, _fileno
+#define write _write
+#define fsync _commit
+#define fileno _fileno
+#else
 #include <unistd.h> // write(), fsync()
+#endif
 
 class JsonWriter {
   public:

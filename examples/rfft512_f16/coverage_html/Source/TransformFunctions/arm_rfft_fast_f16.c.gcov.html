@@ -1,0 +1,632 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - Source/TransformFunctions/arm_rfft_fast_f16.c</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">Source/TransformFunctions</a> - arm_rfft_fast_f16.c<span style="font-size: 80%;"> (source / <a href="arm_rfft_fast_f16.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">52.6&nbsp;%</td>
+            <td class="headerCovTableEntry">97</td>
+            <td class="headerCovTableEntry">51</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-04-29 10:21:44</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">1</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : ﻿/* ----------------------------------------------------------------------</span>
+<span id="L2"><span class="lineNum">       2</span>              :  * Project:      CMSIS DSP Library</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * Title:        arm_rfft_fast_f16.c</span>
+<span id="L4"><span class="lineNum">       4</span>              :  * Description:  RFFT &amp; RIFFT Floating point process function</span>
+<span id="L5"><span class="lineNum">       5</span>              :  *</span>
+<span id="L6"><span class="lineNum">       6</span>              :  * $Date:        23 April 2021</span>
+<span id="L7"><span class="lineNum">       7</span>              :  * $Revision:    V1.9.0</span>
+<span id="L8"><span class="lineNum">       8</span>              :  *</span>
+<span id="L9"><span class="lineNum">       9</span>              :  * Target Processor: Cortex-M and Cortex-A cores</span>
+<span id="L10"><span class="lineNum">      10</span>              :  * -------------------------------------------------------------------- */</span>
+<span id="L11"><span class="lineNum">      11</span>              : </span>
+<span id="L12"><span class="lineNum">      12</span>              : /*</span>
+<span id="L13"><span class="lineNum">      13</span>              :  * Copyright (C) 2010-2021 ARM Limited or its affiliates. All rights reserved.</span>
+<span id="L14"><span class="lineNum">      14</span>              :  *</span>
+<span id="L15"><span class="lineNum">      15</span>              :  * SPDX-License-Identifier: Apache-2.0</span>
+<span id="L16"><span class="lineNum">      16</span>              :  *</span>
+<span id="L17"><span class="lineNum">      17</span>              :  * Licensed under the Apache License, Version 2.0 (the License); you may</span>
+<span id="L18"><span class="lineNum">      18</span>              :  * not use this file except in compliance with the License.</span>
+<span id="L19"><span class="lineNum">      19</span>              :  * You may obtain a copy of the License at</span>
+<span id="L20"><span class="lineNum">      20</span>              :  *</span>
+<span id="L21"><span class="lineNum">      21</span>              :  * www.apache.org/licenses/LICENSE-2.0</span>
+<span id="L22"><span class="lineNum">      22</span>              :  *</span>
+<span id="L23"><span class="lineNum">      23</span>              :  * Unless required by applicable law or agreed to in writing, software</span>
+<span id="L24"><span class="lineNum">      24</span>              :  * distributed under the License is distributed on an AS IS BASIS, WITHOUT</span>
+<span id="L25"><span class="lineNum">      25</span>              :  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span id="L26"><span class="lineNum">      26</span>              :  * See the License for the specific language governing permissions and</span>
+<span id="L27"><span class="lineNum">      27</span>              :  * limitations under the License.</span>
+<span id="L28"><span class="lineNum">      28</span>              :  */</span>
+<span id="L29"><span class="lineNum">      29</span>              : #include &quot;arm_compiler_specific.h&quot;</span>
+<span id="L30"><span class="lineNum">      30</span>              : </span>
+<span id="L31"><span class="lineNum">      31</span>              : </span>
+<span id="L32"><span class="lineNum">      32</span>              : #include &quot;dsp/transform_functions_f16.h&quot;</span>
+<span id="L33"><span class="lineNum">      33</span>              : #include &quot;arm_common_tables_f16.h&quot;</span>
+<span id="L34"><span class="lineNum">      34</span>              : </span>
+<span id="L35"><span class="lineNum">      35</span>              : #if defined(ARM_FLOAT16_SUPPORTED)</span>
+<span id="L36"><span class="lineNum">      36</span>              : </span>
+<span id="L37"><span class="lineNum">      37</span>              : </span>
+<span id="L38"><span class="lineNum">      38</span>              : #if defined(ARM_MATH_MVE_FLOAT16) &amp;&amp; !defined(ARM_MATH_AUTOVECTORIZE)</span>
+<span id="L39"><span class="lineNum">      39</span>              : </span>
+<span id="L40"><span class="lineNum">      40</span>              : static void stage_rfft_f16(</span>
+<span id="L41"><span class="lineNum">      41</span>              :   const arm_rfft_fast_instance_f16 * S,</span>
+<span id="L42"><span class="lineNum">      42</span>              :   const float16_t * p,</span>
+<span id="L43"><span class="lineNum">      43</span>              :         float16_t * pOut)</span>
+<span id="L44"><span class="lineNum">      44</span>              : {</span>
+<span id="L45"><span class="lineNum">      45</span>              :         int32_t  k;                                /* Loop Counter */</span>
+<span id="L46"><span class="lineNum">      46</span>              :         float16_t twR, twI;                         /* RFFT Twiddle coefficients */</span>
+<span id="L47"><span class="lineNum">      47</span>              :   const float16_t * pCoeff = S-&gt;pTwiddleRFFT;       /* Points to RFFT Twiddle factors */</span>
+<span id="L48"><span class="lineNum">      48</span>              :   const float16_t *pA = p;                          /* increasing pointer */</span>
+<span id="L49"><span class="lineNum">      49</span>              :   const float16_t *pB = p;                          /* decreasing pointer */</span>
+<span id="L50"><span class="lineNum">      50</span>              :         float16_t xAR, xAI, xBR, xBI;               /* temporary variables */</span>
+<span id="L51"><span class="lineNum">      51</span>              :         float16_t t1a, t1b;                         /* temporary variables */</span>
+<span id="L52"><span class="lineNum">      52</span>              :         float16_t p0, p1, p2, p3;                   /* temporary variables */</span>
+<span id="L53"><span class="lineNum">      53</span>              : </span>
+<span id="L54"><span class="lineNum">      54</span>              :         float16x8x2_t tw,xA,xB;</span>
+<span id="L55"><span class="lineNum">      55</span>              :         float16x8x2_t tmp1, tmp2, res;</span>
+<span id="L56"><span class="lineNum">      56</span>              : </span>
+<span id="L57"><span class="lineNum">      57</span>              :         uint16x8_t     vecStridesBkwd;</span>
+<span id="L58"><span class="lineNum">      58</span>              : </span>
+<span id="L59"><span class="lineNum">      59</span>              :         vecStridesBkwd = vddupq_u16((uint16_t)14, 2);</span>
+<span id="L60"><span class="lineNum">      60</span>              : </span>
+<span id="L61"><span class="lineNum">      61</span>              : </span>
+<span id="L62"><span class="lineNum">      62</span>              :         int blockCnt;</span>
+<span id="L63"><span class="lineNum">      63</span>              : </span>
+<span id="L64"><span class="lineNum">      64</span>              : </span>
+<span id="L65"><span class="lineNum">      65</span> <span class="tlaGNC tlaBgGNC">           1 :    k = (S-&gt;Sint).fftLen - 1;</span></span>
+<span id="L66"><span class="lineNum">      66</span>              : </span>
+<span id="L67"><span class="lineNum">      67</span>              :    /* Pack first and last sample of the frequency domain together */</span>
+<span id="L68"><span class="lineNum">      68</span>              : </span>
+<span id="L69"><span class="lineNum">      69</span> <span class="tlaGNC">           1 :    xBR = pB[0];</span></span>
+<span id="L70"><span class="lineNum">      70</span> <span class="tlaGNC">           1 :    xBI = pB[1];</span></span>
+<span id="L71"><span class="lineNum">      71</span>              :    xAR = pA[0];</span>
+<span id="L72"><span class="lineNum">      72</span>              :    xAI = pA[1];</span>
+<span id="L73"><span class="lineNum">      73</span>              : </span>
+<span id="L74"><span class="lineNum">      74</span>              :    twR = *pCoeff++ ;</span>
+<span id="L75"><span class="lineNum">      75</span> <span class="tlaGNC">           1 :    twI = *pCoeff++ ;</span></span>
+<span id="L76"><span class="lineNum">      76</span>              : </span>
+<span id="L77"><span class="lineNum">      77</span>              :    // U1 = XA(1) + XB(1); % It is real</span>
+<span id="L78"><span class="lineNum">      78</span> <span class="tlaGNC">           1 :    t1a = (_Float16)xBR + (_Float16)xAR  ;</span></span>
+<span id="L79"><span class="lineNum">      79</span>              : </span>
+<span id="L80"><span class="lineNum">      80</span>              :    // U2 = XB(1) - XA(1); % It is imaginary</span>
+<span id="L81"><span class="lineNum">      81</span> <span class="tlaGNC">           1 :    t1b = (_Float16)xBI + (_Float16)xAI  ;</span></span>
+<span id="L82"><span class="lineNum">      82</span>              : </span>
+<span id="L83"><span class="lineNum">      83</span>              :    // real(tw * (xB - xA)) = twR * (xBR - xAR) - twI * (xBI - xAI);</span>
+<span id="L84"><span class="lineNum">      84</span>              :    // imag(tw * (xB - xA)) = twI * (xBR - xAR) + twR * (xBI - xAI);</span>
+<span id="L85"><span class="lineNum">      85</span> <span class="tlaGNC">           1 :    *pOut++ = 0.5f16 * ( (_Float16)t1a + (_Float16)t1b );</span></span>
+<span id="L86"><span class="lineNum">      86</span> <span class="tlaGNC">           1 :    *pOut++ = 0.5f16 * ( (_Float16)t1a - (_Float16)t1b );</span></span>
+<span id="L87"><span class="lineNum">      87</span>              : </span>
+<span id="L88"><span class="lineNum">      88</span>              :    // XA(1) = 1/2*( U1 - imag(U2) +  i*( U1 +imag(U2) ));</span>
+<span id="L89"><span class="lineNum">      89</span> <span class="tlaGNC">           1 :    pB  = p + 2*k - 14;</span></span>
+<span id="L90"><span class="lineNum">      90</span> <span class="tlaGNC">           1 :    pA += 2;</span></span>
+<span id="L91"><span class="lineNum">      91</span>              : </span>
+<span id="L92"><span class="lineNum">      92</span> <span class="tlaGNC">           1 :    blockCnt = k &gt;&gt; 3;</span></span>
+<span id="L93"><span class="lineNum">      93</span> <span class="tlaGNC">           1 :    while (blockCnt &gt; 0)</span></span>
+<span id="L94"><span class="lineNum">      94</span>              :    {</span>
+<span id="L95"><span class="lineNum">      95</span>              :       /*</span>
+<span id="L96"><span class="lineNum">      96</span>              :          function X = my_split_rfft(X, ifftFlag)</span>
+<span id="L97"><span class="lineNum">      97</span>              :          % X is a series of real numbers</span>
+<span id="L98"><span class="lineNum">      98</span>              :          L  = length(X);</span>
+<span id="L99"><span class="lineNum">      99</span>              :          XC = X(1:2:end) +i*X(2:2:end);</span>
+<span id="L100"><span class="lineNum">     100</span>              :          XA = fft(XC);</span>
+<span id="L101"><span class="lineNum">     101</span>              :          XB = conj(XA([1 end:-1:2]));</span>
+<span id="L102"><span class="lineNum">     102</span>              :          TW = i*exp(-2*pi*i*[0:L/2-1]/L).';</span>
+<span id="L103"><span class="lineNum">     103</span>              :          for l = 2:L/2</span>
+<span id="L104"><span class="lineNum">     104</span>              :             XA(l) = 1/2 * (XA(l) + XB(l) + TW(l) * (XB(l) - XA(l)));</span>
+<span id="L105"><span class="lineNum">     105</span>              :          end</span>
+<span id="L106"><span class="lineNum">     106</span>              :          XA(1) = 1/2* (XA(1) + XB(1) + TW(1) * (XB(1) - XA(1))) + i*( 1/2*( XA(1) + XB(1) + i*( XA(1) - XB(1))));</span>
+<span id="L107"><span class="lineNum">     107</span>              :          X = XA;</span>
+<span id="L108"><span class="lineNum">     108</span>              :       */</span>
+<span id="L109"><span class="lineNum">     109</span>              : </span>
+<span id="L110"><span class="lineNum">     110</span>              : </span>
+<span id="L111"><span class="lineNum">     111</span> <span class="tlaGNC">           1 :       xA = vld2q_f16(pA);</span></span>
+<span id="L112"><span class="lineNum">     112</span>              :       pA += 16;</span>
+<span id="L113"><span class="lineNum">     113</span>              : </span>
+<span id="L114"><span class="lineNum">     114</span>              :       xB = vld2q_f16(pB);</span>
+<span id="L115"><span class="lineNum">     115</span>              : </span>
+<span id="L116"><span class="lineNum">     116</span> <span class="tlaGNC">           1 :       xB.val[0] = vldrhq_gather_shifted_offset_f16(pB, vecStridesBkwd);</span></span>
+<span id="L117"><span class="lineNum">     117</span> <span class="tlaGNC">           1 :       xB.val[1] = vldrhq_gather_shifted_offset_f16(&amp;pB[1], vecStridesBkwd);</span></span>
+<span id="L118"><span class="lineNum">     118</span>              : </span>
+<span id="L119"><span class="lineNum">     119</span>              :       xB.val[1] = vnegq_f16(xB.val[1]);</span>
+<span id="L120"><span class="lineNum">     120</span> <span class="tlaGNC">           1 :       pB -= 16;</span></span>
+<span id="L121"><span class="lineNum">     121</span>              : </span>
+<span id="L122"><span class="lineNum">     122</span>              : </span>
+<span id="L123"><span class="lineNum">     123</span> <span class="tlaGNC">           1 :       tw = vld2q_f16(pCoeff);</span></span>
+<span id="L124"><span class="lineNum">     124</span>              :       pCoeff += 16;</span>
+<span id="L125"><span class="lineNum">     125</span>              : </span>
+<span id="L126"><span class="lineNum">     126</span>              : </span>
+<span id="L127"><span class="lineNum">     127</span> <span class="tlaGNC">           1 :       tmp1.val[0] = vaddq_f16(xA.val[0],xB.val[0]);</span></span>
+<span id="L128"><span class="lineNum">     128</span> <span class="tlaGNC">           1 :       tmp1.val[1] = vaddq_f16(xA.val[1],xB.val[1]);</span></span>
+<span id="L129"><span class="lineNum">     129</span>              : </span>
+<span id="L130"><span class="lineNum">     130</span> <span class="tlaGNC">           1 :       tmp2.val[0] = vsubq_f16(xB.val[0],xA.val[0]);</span></span>
+<span id="L131"><span class="lineNum">     131</span> <span class="tlaGNC">           1 :       tmp2.val[1] = vsubq_f16(xB.val[1],xA.val[1]);</span></span>
+<span id="L132"><span class="lineNum">     132</span>              : </span>
+<span id="L133"><span class="lineNum">     133</span> <span class="tlaGNC">           1 :       res.val[0] = vmulq(tw.val[0], tmp2.val[0]);</span></span>
+<span id="L134"><span class="lineNum">     134</span> <span class="tlaGNC">           1 :       res.val[0] = vfmsq(res.val[0],tw.val[1], tmp2.val[1]);</span></span>
+<span id="L135"><span class="lineNum">     135</span>              : </span>
+<span id="L136"><span class="lineNum">     136</span> <span class="tlaGNC">           1 :       res.val[1] = vmulq(tw.val[0], tmp2.val[1]);</span></span>
+<span id="L137"><span class="lineNum">     137</span> <span class="tlaGNC">           1 :       res.val[1] = vfmaq(res.val[1], tw.val[1], tmp2.val[0]);</span></span>
+<span id="L138"><span class="lineNum">     138</span>              : </span>
+<span id="L139"><span class="lineNum">     139</span> <span class="tlaGNC">           1 :       res.val[0] = vaddq_f16(res.val[0],tmp1.val[0] );</span></span>
+<span id="L140"><span class="lineNum">     140</span> <span class="tlaGNC">           1 :       res.val[1] = vaddq_f16(res.val[1],tmp1.val[1] );</span></span>
+<span id="L141"><span class="lineNum">     141</span>              : </span>
+<span id="L142"><span class="lineNum">     142</span> <span class="tlaGNC">           1 :       res.val[0] = vmulq_n_f16(res.val[0], 0.5f);</span></span>
+<span id="L143"><span class="lineNum">     143</span> <span class="tlaGNC">           1 :       res.val[1] = vmulq_n_f16(res.val[1], 0.5f);</span></span>
+<span id="L144"><span class="lineNum">     144</span>              : </span>
+<span id="L145"><span class="lineNum">     145</span>              : </span>
+<span id="L146"><span class="lineNum">     146</span> <span class="tlaGNC">           1 :       vst2q_f16(pOut, res);</span></span>
+<span id="L147"><span class="lineNum">     147</span>              :       pOut += 16;</span>
+<span id="L148"><span class="lineNum">     148</span>              : </span>
+<span id="L149"><span class="lineNum">     149</span>              :     </span>
+<span id="L150"><span class="lineNum">     150</span>              :       blockCnt--;</span>
+<span id="L151"><span class="lineNum">     151</span>              :    } </span>
+<span id="L152"><span class="lineNum">     152</span>              : </span>
+<span id="L153"><span class="lineNum">     153</span>              :    pB += 14;</span>
+<span id="L154"><span class="lineNum">     154</span> <span class="tlaGNC">           1 :    blockCnt = k &amp; 7;</span></span>
+<span id="L155"><span class="lineNum">     155</span> <span class="tlaGNC">           1 :    while (blockCnt &gt; 0)</span></span>
+<span id="L156"><span class="lineNum">     156</span>              :    {</span>
+<span id="L157"><span class="lineNum">     157</span>              :       /*</span>
+<span id="L158"><span class="lineNum">     158</span>              :          function X = my_split_rfft(X, ifftFlag)</span>
+<span id="L159"><span class="lineNum">     159</span>              :          % X is a series of real numbers</span>
+<span id="L160"><span class="lineNum">     160</span>              :          L  = length(X);</span>
+<span id="L161"><span class="lineNum">     161</span>              :          XC = X(1:2:end) +i*X(2:2:end);</span>
+<span id="L162"><span class="lineNum">     162</span>              :          XA = fft(XC);</span>
+<span id="L163"><span class="lineNum">     163</span>              :          XB = conj(XA([1 end:-1:2]));</span>
+<span id="L164"><span class="lineNum">     164</span>              :          TW = i*exp(-2*pi*i*[0:L/2-1]/L).';</span>
+<span id="L165"><span class="lineNum">     165</span>              :          for l = 2:L/2</span>
+<span id="L166"><span class="lineNum">     166</span>              :             XA(l) = 1/2 * (XA(l) + XB(l) + TW(l) * (XB(l) - XA(l)));</span>
+<span id="L167"><span class="lineNum">     167</span>              :          end</span>
+<span id="L168"><span class="lineNum">     168</span>              :          XA(1) = 1/2* (XA(1) + XB(1) + TW(1) * (XB(1) - XA(1))) + i*( 1/2*( XA(1) + XB(1) + i*( XA(1) - XB(1))));</span>
+<span id="L169"><span class="lineNum">     169</span>              :          X = XA;</span>
+<span id="L170"><span class="lineNum">     170</span>              :       */</span>
+<span id="L171"><span class="lineNum">     171</span>              : </span>
+<span id="L172"><span class="lineNum">     172</span> <span class="tlaGNC">           1 :       xBI = pB[1];</span></span>
+<span id="L173"><span class="lineNum">     173</span> <span class="tlaGNC">           1 :       xBR = pB[0];</span></span>
+<span id="L174"><span class="lineNum">     174</span> <span class="tlaGNC">           1 :       xAR = pA[0];</span></span>
+<span id="L175"><span class="lineNum">     175</span> <span class="tlaGNC">           1 :       xAI = pA[1];</span></span>
+<span id="L176"><span class="lineNum">     176</span>              : </span>
+<span id="L177"><span class="lineNum">     177</span> <span class="tlaGNC">           1 :       twR = *pCoeff++;</span></span>
+<span id="L178"><span class="lineNum">     178</span> <span class="tlaGNC">           1 :       twI = *pCoeff++;</span></span>
+<span id="L179"><span class="lineNum">     179</span>              : </span>
+<span id="L180"><span class="lineNum">     180</span> <span class="tlaGNC">           1 :       t1a = (_Float16)xBR - (_Float16)xAR ;</span></span>
+<span id="L181"><span class="lineNum">     181</span> <span class="tlaGNC">           1 :       t1b = (_Float16)xBI + (_Float16)xAI ;</span></span>
+<span id="L182"><span class="lineNum">     182</span>              : </span>
+<span id="L183"><span class="lineNum">     183</span>              :       // real(tw * (xB - xA)) = twR * (xBR - xAR) - twI * (xBI - xAI);</span>
+<span id="L184"><span class="lineNum">     184</span>              :       // imag(tw * (xB - xA)) = twI * (xBR - xAR) + twR * (xBI - xAI);</span>
+<span id="L185"><span class="lineNum">     185</span> <span class="tlaGNC">           1 :       p0 = (_Float16)twR * (_Float16)t1a;</span></span>
+<span id="L186"><span class="lineNum">     186</span> <span class="tlaGNC">           1 :       p1 = (_Float16)twI * (_Float16)t1a;</span></span>
+<span id="L187"><span class="lineNum">     187</span> <span class="tlaGNC">           1 :       p2 = (_Float16)twR * (_Float16)t1b;</span></span>
+<span id="L188"><span class="lineNum">     188</span> <span class="tlaGNC">           1 :       p3 = (_Float16)twI * (_Float16)t1b;</span></span>
+<span id="L189"><span class="lineNum">     189</span>              : </span>
+<span id="L190"><span class="lineNum">     190</span> <span class="tlaGNC">           1 :       *pOut++ = 0.5f16 * ((_Float16)xAR + (_Float16)xBR + (_Float16)p0 + (_Float16)p3 ); //xAR</span></span>
+<span id="L191"><span class="lineNum">     191</span> <span class="tlaGNC">           1 :       *pOut++ = 0.5f16 * ((_Float16)xAI - (_Float16)xBI + (_Float16)p1 - (_Float16)p2 ); //xAI</span></span>
+<span id="L192"><span class="lineNum">     192</span>              : </span>
+<span id="L193"><span class="lineNum">     193</span>              :       pA += 2;</span>
+<span id="L194"><span class="lineNum">     194</span>              :       pB -= 2;</span>
+<span id="L195"><span class="lineNum">     195</span>              :       blockCnt--;</span>
+<span id="L196"><span class="lineNum">     196</span>              :    }</span>
+<span id="L197"><span class="lineNum">     197</span>              : }</span>
+<span id="L198"><span class="lineNum">     198</span>              : </span>
+<span id="L199"><span class="lineNum">     199</span>              : /* Prepares data for inverse cfft */</span>
+<span id="L200"><span class="lineNum">     200</span>              : static void merge_rfft_f16(</span>
+<span id="L201"><span class="lineNum">     201</span>              :   const arm_rfft_fast_instance_f16 * S,</span>
+<span id="L202"><span class="lineNum">     202</span>              :   const float16_t * p,</span>
+<span id="L203"><span class="lineNum">     203</span>              :         float16_t * pOut)</span>
+<span id="L204"><span class="lineNum">     204</span>              : {</span>
+<span id="L205"><span class="lineNum">     205</span>              :         int32_t  k;                                /* Loop Counter */</span>
+<span id="L206"><span class="lineNum">     206</span>              :         float16_t twR, twI;                         /* RFFT Twiddle coefficients */</span>
+<span id="L207"><span class="lineNum">     207</span>              :   const float16_t *pCoeff = S-&gt;pTwiddleRFFT;        /* Points to RFFT Twiddle factors */</span>
+<span id="L208"><span class="lineNum">     208</span>              :   const float16_t *pA = p;                          /* increasing pointer */</span>
+<span id="L209"><span class="lineNum">     209</span>              :   const float16_t *pB = p;                          /* decreasing pointer */</span>
+<span id="L210"><span class="lineNum">     210</span>              :         float16_t xAR, xAI, xBR, xBI;               /* temporary variables */</span>
+<span id="L211"><span class="lineNum">     211</span>              :         float16_t t1a, t1b, r, s, t, u;             /* temporary variables */</span>
+<span id="L212"><span class="lineNum">     212</span>              : </span>
+<span id="L213"><span class="lineNum">     213</span>              :         float16x8x2_t tw,xA,xB;</span>
+<span id="L214"><span class="lineNum">     214</span>              :         float16x8x2_t tmp1, tmp2, res;</span>
+<span id="L215"><span class="lineNum">     215</span>              :         uint16x8_t     vecStridesBkwd;</span>
+<span id="L216"><span class="lineNum">     216</span>              : </span>
+<span id="L217"><span class="lineNum">     217</span>              :         vecStridesBkwd = vddupq_u16((uint16_t)14, 2);</span>
+<span id="L218"><span class="lineNum">     218</span>              : </span>
+<span id="L219"><span class="lineNum">     219</span>              :         int blockCnt;</span>
+<span id="L220"><span class="lineNum">     220</span>              :         </span>
+<span id="L221"><span class="lineNum">     221</span>              : </span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaUNC tlaBgUNC">           0 :    k = (S-&gt;Sint).fftLen - 1;</span></span>
+<span id="L223"><span class="lineNum">     223</span>              : </span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaUNC">           0 :    xAR = pA[0];</span></span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaUNC">           0 :    xAI = pA[1];</span></span>
+<span id="L226"><span class="lineNum">     226</span>              : </span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaUNC">           0 :    pCoeff += 2 ;</span></span>
+<span id="L228"><span class="lineNum">     228</span>              : </span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaUNC">           0 :    *pOut++ = 0.5f16 * ( (_Float16)xAR + (_Float16)xAI );</span></span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaUNC">           0 :    *pOut++ = 0.5f16 * ( (_Float16)xAR - (_Float16)xAI );</span></span>
+<span id="L231"><span class="lineNum">     231</span>              : </span>
+<span id="L232"><span class="lineNum">     232</span> <span class="tlaUNC">           0 :    pB  =  p + 2*k - 14;</span></span>
+<span id="L233"><span class="lineNum">     233</span> <span class="tlaUNC">           0 :    pA +=  2    ;</span></span>
+<span id="L234"><span class="lineNum">     234</span>              : </span>
+<span id="L235"><span class="lineNum">     235</span> <span class="tlaUNC">           0 :    blockCnt = k &gt;&gt; 3;</span></span>
+<span id="L236"><span class="lineNum">     236</span> <span class="tlaUNC">           0 :    while (blockCnt &gt; 0)</span></span>
+<span id="L237"><span class="lineNum">     237</span>              :    {</span>
+<span id="L238"><span class="lineNum">     238</span>              :       /* G is half of the frequency complex spectrum */</span>
+<span id="L239"><span class="lineNum">     239</span>              :       //for k = 2:N</span>
+<span id="L240"><span class="lineNum">     240</span>              :       //    Xk(k) = 1/2 * (G(k) + conj(G(N-k+2)) + Tw(k)*( G(k) - conj(G(N-k+2))));</span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaUNC">           0 :       xA = vld2q_f16(pA);</span></span>
+<span id="L242"><span class="lineNum">     242</span>              :       pA += 16;</span>
+<span id="L243"><span class="lineNum">     243</span>              : </span>
+<span id="L244"><span class="lineNum">     244</span>              :       xB = vld2q_f16(pB);</span>
+<span id="L245"><span class="lineNum">     245</span>              : </span>
+<span id="L246"><span class="lineNum">     246</span> <span class="tlaUNC">           0 :       xB.val[0] = vldrhq_gather_shifted_offset_f16(pB, vecStridesBkwd);</span></span>
+<span id="L247"><span class="lineNum">     247</span> <span class="tlaUNC">           0 :       xB.val[1] = vldrhq_gather_shifted_offset_f16(&amp;pB[1], vecStridesBkwd);</span></span>
+<span id="L248"><span class="lineNum">     248</span>              : </span>
+<span id="L249"><span class="lineNum">     249</span>              :       xB.val[1] = vnegq_f16(xB.val[1]);</span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaUNC">           0 :       pB -= 16;</span></span>
+<span id="L251"><span class="lineNum">     251</span>              : </span>
+<span id="L252"><span class="lineNum">     252</span>              : </span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaUNC">           0 :       tw = vld2q_f16(pCoeff);</span></span>
+<span id="L254"><span class="lineNum">     254</span>              :       tw.val[1] = vnegq_f16(tw.val[1]);</span>
+<span id="L255"><span class="lineNum">     255</span>              :       pCoeff += 16;</span>
+<span id="L256"><span class="lineNum">     256</span>              : </span>
+<span id="L257"><span class="lineNum">     257</span>              : </span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaUNC">           0 :       tmp1.val[0] = vaddq_f16(xA.val[0],xB.val[0]);</span></span>
+<span id="L259"><span class="lineNum">     259</span> <span class="tlaUNC">           0 :       tmp1.val[1] = vaddq_f16(xA.val[1],xB.val[1]);</span></span>
+<span id="L260"><span class="lineNum">     260</span>              : </span>
+<span id="L261"><span class="lineNum">     261</span> <span class="tlaUNC">           0 :       tmp2.val[0] = vsubq_f16(xB.val[0],xA.val[0]);</span></span>
+<span id="L262"><span class="lineNum">     262</span> <span class="tlaUNC">           0 :       tmp2.val[1] = vsubq_f16(xB.val[1],xA.val[1]);</span></span>
+<span id="L263"><span class="lineNum">     263</span>              : </span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaUNC">           0 :       res.val[0] = vmulq(tw.val[0], tmp2.val[0]);</span></span>
+<span id="L265"><span class="lineNum">     265</span> <span class="tlaUNC">           0 :       res.val[0] = vfmsq(res.val[0],tw.val[1], tmp2.val[1]);</span></span>
+<span id="L266"><span class="lineNum">     266</span>              : </span>
+<span id="L267"><span class="lineNum">     267</span> <span class="tlaUNC">           0 :       res.val[1] = vmulq(tw.val[0], tmp2.val[1]);</span></span>
+<span id="L268"><span class="lineNum">     268</span> <span class="tlaUNC">           0 :       res.val[1] = vfmaq(res.val[1], tw.val[1], tmp2.val[0]);</span></span>
+<span id="L269"><span class="lineNum">     269</span>              : </span>
+<span id="L270"><span class="lineNum">     270</span> <span class="tlaUNC">           0 :       res.val[0] = vaddq_f16(res.val[0],tmp1.val[0] );</span></span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaUNC">           0 :       res.val[1] = vaddq_f16(res.val[1],tmp1.val[1] );</span></span>
+<span id="L272"><span class="lineNum">     272</span>              : </span>
+<span id="L273"><span class="lineNum">     273</span> <span class="tlaUNC">           0 :       res.val[0] = vmulq_n_f16(res.val[0], 0.5f);</span></span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaUNC">           0 :       res.val[1] = vmulq_n_f16(res.val[1], 0.5f);</span></span>
+<span id="L275"><span class="lineNum">     275</span>              : </span>
+<span id="L276"><span class="lineNum">     276</span>              : </span>
+<span id="L277"><span class="lineNum">     277</span> <span class="tlaUNC">           0 :       vst2q_f16(pOut, res);</span></span>
+<span id="L278"><span class="lineNum">     278</span>              :       pOut += 16;</span>
+<span id="L279"><span class="lineNum">     279</span>              : </span>
+<span id="L280"><span class="lineNum">     280</span>              :     </span>
+<span id="L281"><span class="lineNum">     281</span>              :       blockCnt--;</span>
+<span id="L282"><span class="lineNum">     282</span>              :    }</span>
+<span id="L283"><span class="lineNum">     283</span>              : </span>
+<span id="L284"><span class="lineNum">     284</span>              :    pB += 14;</span>
+<span id="L285"><span class="lineNum">     285</span> <span class="tlaUNC">           0 :    blockCnt = k &amp; 7;</span></span>
+<span id="L286"><span class="lineNum">     286</span> <span class="tlaUNC">           0 :    while (blockCnt &gt; 0)</span></span>
+<span id="L287"><span class="lineNum">     287</span>              :    {</span>
+<span id="L288"><span class="lineNum">     288</span>              :       /* G is half of the frequency complex spectrum */</span>
+<span id="L289"><span class="lineNum">     289</span>              :       //for k = 2:N</span>
+<span id="L290"><span class="lineNum">     290</span>              :       //    Xk(k) = 1/2 * (G(k) + conj(G(N-k+2)) + Tw(k)*( G(k) - conj(G(N-k+2))));</span>
+<span id="L291"><span class="lineNum">     291</span> <span class="tlaUNC">           0 :       xBI =   pB[1]    ;</span></span>
+<span id="L292"><span class="lineNum">     292</span> <span class="tlaUNC">           0 :       xBR =   pB[0]    ;</span></span>
+<span id="L293"><span class="lineNum">     293</span> <span class="tlaUNC">           0 :       xAR =  pA[0];</span></span>
+<span id="L294"><span class="lineNum">     294</span> <span class="tlaUNC">           0 :       xAI =  pA[1];</span></span>
+<span id="L295"><span class="lineNum">     295</span>              : </span>
+<span id="L296"><span class="lineNum">     296</span> <span class="tlaUNC">           0 :       twR = *pCoeff++;</span></span>
+<span id="L297"><span class="lineNum">     297</span> <span class="tlaUNC">           0 :       twI = *pCoeff++;</span></span>
+<span id="L298"><span class="lineNum">     298</span>              : </span>
+<span id="L299"><span class="lineNum">     299</span> <span class="tlaUNC">           0 :       t1a = (_Float16)xAR - (_Float16)xBR ;</span></span>
+<span id="L300"><span class="lineNum">     300</span> <span class="tlaUNC">           0 :       t1b = (_Float16)xAI + (_Float16)xBI ;</span></span>
+<span id="L301"><span class="lineNum">     301</span>              : </span>
+<span id="L302"><span class="lineNum">     302</span> <span class="tlaUNC">           0 :       r = (_Float16)twR * (_Float16)t1a;</span></span>
+<span id="L303"><span class="lineNum">     303</span> <span class="tlaUNC">           0 :       s = (_Float16)twI * (_Float16)t1b;</span></span>
+<span id="L304"><span class="lineNum">     304</span> <span class="tlaUNC">           0 :       t = (_Float16)twI * (_Float16)t1a;</span></span>
+<span id="L305"><span class="lineNum">     305</span> <span class="tlaUNC">           0 :       u = (_Float16)twR * (_Float16)t1b;</span></span>
+<span id="L306"><span class="lineNum">     306</span>              : </span>
+<span id="L307"><span class="lineNum">     307</span>              :       // real(tw * (xA - xB)) = twR * (xAR - xBR) - twI * (xAI - xBI);</span>
+<span id="L308"><span class="lineNum">     308</span>              :       // imag(tw * (xA - xB)) = twI * (xAR - xBR) + twR * (xAI - xBI);</span>
+<span id="L309"><span class="lineNum">     309</span> <span class="tlaUNC">           0 :       *pOut++ = 0.5f16 * ((_Float16)xAR + (_Float16)xBR - (_Float16)r - (_Float16)s ); //xAR</span></span>
+<span id="L310"><span class="lineNum">     310</span> <span class="tlaUNC">           0 :       *pOut++ = 0.5f16 * ((_Float16)xAI - (_Float16)xBI + (_Float16)t - (_Float16)u ); //xAI</span></span>
+<span id="L311"><span class="lineNum">     311</span>              : </span>
+<span id="L312"><span class="lineNum">     312</span>              :       pA += 2;</span>
+<span id="L313"><span class="lineNum">     313</span>              :       pB -= 2;</span>
+<span id="L314"><span class="lineNum">     314</span>              :       blockCnt--;</span>
+<span id="L315"><span class="lineNum">     315</span>              :    }</span>
+<span id="L316"><span class="lineNum">     316</span>              : </span>
+<span id="L317"><span class="lineNum">     317</span>              : }</span>
+<span id="L318"><span class="lineNum">     318</span>              : #elif defined(ARM_MATH_NEON_FLOAT16) </span>
+<span id="L319"><span class="lineNum">     319</span>              : /*</span>
+<span id="L320"><span class="lineNum">     320</span>              : </span>
+<span id="L321"><span class="lineNum">     321</span>              : No stage merge functions defined here for Neon.</span>
+<span id="L322"><span class="lineNum">     322</span>              : </span>
+<span id="L323"><span class="lineNum">     323</span>              : */</span>
+<span id="L324"><span class="lineNum">     324</span>              : #else</span>
+<span id="L325"><span class="lineNum">     325</span>              : static void stage_rfft_f16(</span>
+<span id="L326"><span class="lineNum">     326</span>              :   const arm_rfft_fast_instance_f16 * S,</span>
+<span id="L327"><span class="lineNum">     327</span>              :   const float16_t * p,</span>
+<span id="L328"><span class="lineNum">     328</span>              :         float16_t * pOut)</span>
+<span id="L329"><span class="lineNum">     329</span>              : {</span>
+<span id="L330"><span class="lineNum">     330</span>              :         int32_t  k;                                /* Loop Counter */</span>
+<span id="L331"><span class="lineNum">     331</span>              :         float16_t twR, twI;                         /* RFFT Twiddle coefficients */</span>
+<span id="L332"><span class="lineNum">     332</span>              :   const float16_t * pCoeff = S-&gt;pTwiddleRFFT;       /* Points to RFFT Twiddle factors */</span>
+<span id="L333"><span class="lineNum">     333</span>              :   const float16_t *pA = p;                          /* increasing pointer */</span>
+<span id="L334"><span class="lineNum">     334</span>              :   const float16_t *pB = p;                          /* decreasing pointer */</span>
+<span id="L335"><span class="lineNum">     335</span>              :         float16_t xAR, xAI, xBR, xBI;               /* temporary variables */</span>
+<span id="L336"><span class="lineNum">     336</span>              :         float16_t t1a, t1b;                         /* temporary variables */</span>
+<span id="L337"><span class="lineNum">     337</span>              :         float16_t p0, p1, p2, p3;                   /* temporary variables */</span>
+<span id="L338"><span class="lineNum">     338</span>              : </span>
+<span id="L339"><span class="lineNum">     339</span>              : </span>
+<span id="L340"><span class="lineNum">     340</span>              :    k = (S-&gt;Sint).fftLen - 1;</span>
+<span id="L341"><span class="lineNum">     341</span>              : </span>
+<span id="L342"><span class="lineNum">     342</span>              :    /* Pack first and last sample of the frequency domain together */</span>
+<span id="L343"><span class="lineNum">     343</span>              : </span>
+<span id="L344"><span class="lineNum">     344</span>              :    xBR = pB[0];</span>
+<span id="L345"><span class="lineNum">     345</span>              :    xBI = pB[1];</span>
+<span id="L346"><span class="lineNum">     346</span>              :    xAR = pA[0];</span>
+<span id="L347"><span class="lineNum">     347</span>              :    xAI = pA[1];</span>
+<span id="L348"><span class="lineNum">     348</span>              : </span>
+<span id="L349"><span class="lineNum">     349</span>              :    twR = *pCoeff++ ;</span>
+<span id="L350"><span class="lineNum">     350</span>              :    twI = *pCoeff++ ;</span>
+<span id="L351"><span class="lineNum">     351</span>              : </span>
+<span id="L352"><span class="lineNum">     352</span>              : </span>
+<span id="L353"><span class="lineNum">     353</span>              :    // U1 = XA(1) + XB(1); % It is real</span>
+<span id="L354"><span class="lineNum">     354</span>              :    t1a = (_Float16)xBR + (_Float16)xAR  ;</span>
+<span id="L355"><span class="lineNum">     355</span>              : </span>
+<span id="L356"><span class="lineNum">     356</span>              :    // U2 = XB(1) - XA(1); % It is imaginary</span>
+<span id="L357"><span class="lineNum">     357</span>              :    t1b = (_Float16)xBI + (_Float16)xAI  ;</span>
+<span id="L358"><span class="lineNum">     358</span>              : </span>
+<span id="L359"><span class="lineNum">     359</span>              :    // real(tw * (xB - xA)) = twR * (xBR - xAR) - twI * (xBI - xAI);</span>
+<span id="L360"><span class="lineNum">     360</span>              :    // imag(tw * (xB - xA)) = twI * (xBR - xAR) + twR * (xBI - xAI);</span>
+<span id="L361"><span class="lineNum">     361</span>              :    *pOut++ = 0.5f16 * ( (_Float16)t1a + (_Float16)t1b );</span>
+<span id="L362"><span class="lineNum">     362</span>              :    *pOut++ = 0.5f16 * ( (_Float16)t1a - (_Float16)t1b );</span>
+<span id="L363"><span class="lineNum">     363</span>              : </span>
+<span id="L364"><span class="lineNum">     364</span>              :    // XA(1) = 1/2*( U1 - imag(U2) +  i*( U1 +imag(U2) ));</span>
+<span id="L365"><span class="lineNum">     365</span>              :    pB  = p + 2*k;</span>
+<span id="L366"><span class="lineNum">     366</span>              :    pA += 2;</span>
+<span id="L367"><span class="lineNum">     367</span>              : </span>
+<span id="L368"><span class="lineNum">     368</span>              :    do</span>
+<span id="L369"><span class="lineNum">     369</span>              :    {</span>
+<span id="L370"><span class="lineNum">     370</span>              :       /*</span>
+<span id="L371"><span class="lineNum">     371</span>              :          function X = my_split_rfft(X, ifftFlag)</span>
+<span id="L372"><span class="lineNum">     372</span>              :          % X is a series of real numbers</span>
+<span id="L373"><span class="lineNum">     373</span>              :          L  = length(X);</span>
+<span id="L374"><span class="lineNum">     374</span>              :          XC = X(1:2:end) +i*X(2:2:end);</span>
+<span id="L375"><span class="lineNum">     375</span>              :          XA = fft(XC);</span>
+<span id="L376"><span class="lineNum">     376</span>              :          XB = conj(XA([1 end:-1:2]));</span>
+<span id="L377"><span class="lineNum">     377</span>              :          TW = i*exp(-2*pi*i*[0:L/2-1]/L).';</span>
+<span id="L378"><span class="lineNum">     378</span>              :          for l = 2:L/2</span>
+<span id="L379"><span class="lineNum">     379</span>              :             XA(l) = 1/2 * (XA(l) + XB(l) + TW(l) * (XB(l) - XA(l)));</span>
+<span id="L380"><span class="lineNum">     380</span>              :          end</span>
+<span id="L381"><span class="lineNum">     381</span>              :          XA(1) = 1/2* (XA(1) + XB(1) + TW(1) * (XB(1) - XA(1))) + i*( 1/2*( XA(1) + XB(1) + i*( XA(1) - XB(1))));</span>
+<span id="L382"><span class="lineNum">     382</span>              :          X = XA;</span>
+<span id="L383"><span class="lineNum">     383</span>              :       */</span>
+<span id="L384"><span class="lineNum">     384</span>              : </span>
+<span id="L385"><span class="lineNum">     385</span>              :       xBI = pB[1];</span>
+<span id="L386"><span class="lineNum">     386</span>              :       xBR = pB[0];</span>
+<span id="L387"><span class="lineNum">     387</span>              :       xAR = pA[0];</span>
+<span id="L388"><span class="lineNum">     388</span>              :       xAI = pA[1];</span>
+<span id="L389"><span class="lineNum">     389</span>              : </span>
+<span id="L390"><span class="lineNum">     390</span>              :       twR = *pCoeff++;</span>
+<span id="L391"><span class="lineNum">     391</span>              :       twI = *pCoeff++;</span>
+<span id="L392"><span class="lineNum">     392</span>              : </span>
+<span id="L393"><span class="lineNum">     393</span>              :       t1a = (_Float16)xBR - (_Float16)xAR ;</span>
+<span id="L394"><span class="lineNum">     394</span>              :       t1b = (_Float16)xBI + (_Float16)xAI ;</span>
+<span id="L395"><span class="lineNum">     395</span>              : </span>
+<span id="L396"><span class="lineNum">     396</span>              :       // real(tw * (xB - xA)) = twR * (xBR - xAR) - twI * (xBI - xAI);</span>
+<span id="L397"><span class="lineNum">     397</span>              :       // imag(tw * (xB - xA)) = twI * (xBR - xAR) + twR * (xBI - xAI);</span>
+<span id="L398"><span class="lineNum">     398</span>              :       p0 = (_Float16)twR * (_Float16)t1a;</span>
+<span id="L399"><span class="lineNum">     399</span>              :       p1 = (_Float16)twI * (_Float16)t1a;</span>
+<span id="L400"><span class="lineNum">     400</span>              :       p2 = (_Float16)twR * (_Float16)t1b;</span>
+<span id="L401"><span class="lineNum">     401</span>              :       p3 = (_Float16)twI * (_Float16)t1b;</span>
+<span id="L402"><span class="lineNum">     402</span>              : </span>
+<span id="L403"><span class="lineNum">     403</span>              :       *pOut++ = 0.5f16 * ((_Float16)xAR + (_Float16)xBR + (_Float16)p0 + (_Float16)p3 ); //xAR</span>
+<span id="L404"><span class="lineNum">     404</span>              :       *pOut++ = 0.5f16 * ((_Float16)xAI - (_Float16)xBI + (_Float16)p1 - (_Float16)p2 ); //xAI</span>
+<span id="L405"><span class="lineNum">     405</span>              : </span>
+<span id="L406"><span class="lineNum">     406</span>              : </span>
+<span id="L407"><span class="lineNum">     407</span>              :       pA += 2;</span>
+<span id="L408"><span class="lineNum">     408</span>              :       pB -= 2;</span>
+<span id="L409"><span class="lineNum">     409</span>              :       k--;</span>
+<span id="L410"><span class="lineNum">     410</span>              :    } while (k &gt; 0);</span>
+<span id="L411"><span class="lineNum">     411</span>              : }</span>
+<span id="L412"><span class="lineNum">     412</span>              : </span>
+<span id="L413"><span class="lineNum">     413</span>              : /* Prepares data for inverse cfft */</span>
+<span id="L414"><span class="lineNum">     414</span>              : static void merge_rfft_f16(</span>
+<span id="L415"><span class="lineNum">     415</span>              :   const arm_rfft_fast_instance_f16 * S,</span>
+<span id="L416"><span class="lineNum">     416</span>              :   const float16_t * p,</span>
+<span id="L417"><span class="lineNum">     417</span>              :         float16_t * pOut)</span>
+<span id="L418"><span class="lineNum">     418</span>              : {</span>
+<span id="L419"><span class="lineNum">     419</span>              :         int32_t  k;                                /* Loop Counter */</span>
+<span id="L420"><span class="lineNum">     420</span>              :         float16_t twR, twI;                         /* RFFT Twiddle coefficients */</span>
+<span id="L421"><span class="lineNum">     421</span>              :   const float16_t *pCoeff = S-&gt;pTwiddleRFFT;        /* Points to RFFT Twiddle factors */</span>
+<span id="L422"><span class="lineNum">     422</span>              :   const float16_t *pA = p;                          /* increasing pointer */</span>
+<span id="L423"><span class="lineNum">     423</span>              :   const float16_t *pB = p;                          /* decreasing pointer */</span>
+<span id="L424"><span class="lineNum">     424</span>              :         float16_t xAR, xAI, xBR, xBI;               /* temporary variables */</span>
+<span id="L425"><span class="lineNum">     425</span>              :         float16_t t1a, t1b, r, s, t, u;             /* temporary variables */</span>
+<span id="L426"><span class="lineNum">     426</span>              : </span>
+<span id="L427"><span class="lineNum">     427</span>              :    k = (S-&gt;Sint).fftLen - 1;</span>
+<span id="L428"><span class="lineNum">     428</span>              : </span>
+<span id="L429"><span class="lineNum">     429</span>              :    xAR = pA[0];</span>
+<span id="L430"><span class="lineNum">     430</span>              :    xAI = pA[1];</span>
+<span id="L431"><span class="lineNum">     431</span>              : </span>
+<span id="L432"><span class="lineNum">     432</span>              :    pCoeff += 2 ;</span>
+<span id="L433"><span class="lineNum">     433</span>              : </span>
+<span id="L434"><span class="lineNum">     434</span>              :    *pOut++ = 0.5f16 * ( (_Float16)xAR + (_Float16)xAI );</span>
+<span id="L435"><span class="lineNum">     435</span>              :    *pOut++ = 0.5f16 * ( (_Float16)xAR - (_Float16)xAI );</span>
+<span id="L436"><span class="lineNum">     436</span>              : </span>
+<span id="L437"><span class="lineNum">     437</span>              :    pB  =  p + 2*k ;</span>
+<span id="L438"><span class="lineNum">     438</span>              :    pA +=  2        ;</span>
+<span id="L439"><span class="lineNum">     439</span>              : </span>
+<span id="L440"><span class="lineNum">     440</span>              :    while (k &gt; 0)</span>
+<span id="L441"><span class="lineNum">     441</span>              :    {</span>
+<span id="L442"><span class="lineNum">     442</span>              :       /* G is half of the frequency complex spectrum */</span>
+<span id="L443"><span class="lineNum">     443</span>              :       //for k = 2:N</span>
+<span id="L444"><span class="lineNum">     444</span>              :       //    Xk(k) = 1/2 * (G(k) + conj(G(N-k+2)) + Tw(k)*( G(k) - conj(G(N-k+2))));</span>
+<span id="L445"><span class="lineNum">     445</span>              :       xBI =   pB[1]    ;</span>
+<span id="L446"><span class="lineNum">     446</span>              :       xBR =   pB[0]    ;</span>
+<span id="L447"><span class="lineNum">     447</span>              :       xAR =  pA[0];</span>
+<span id="L448"><span class="lineNum">     448</span>              :       xAI =  pA[1];</span>
+<span id="L449"><span class="lineNum">     449</span>              : </span>
+<span id="L450"><span class="lineNum">     450</span>              :       twR = *pCoeff++;</span>
+<span id="L451"><span class="lineNum">     451</span>              :       twI = *pCoeff++;</span>
+<span id="L452"><span class="lineNum">     452</span>              : </span>
+<span id="L453"><span class="lineNum">     453</span>              :       t1a = (_Float16)xAR - (_Float16)xBR ;</span>
+<span id="L454"><span class="lineNum">     454</span>              :       t1b = (_Float16)xAI + (_Float16)xBI ;</span>
+<span id="L455"><span class="lineNum">     455</span>              : </span>
+<span id="L456"><span class="lineNum">     456</span>              :       r = (_Float16)twR * (_Float16)t1a;</span>
+<span id="L457"><span class="lineNum">     457</span>              :       s = (_Float16)twI * (_Float16)t1b;</span>
+<span id="L458"><span class="lineNum">     458</span>              :       t = (_Float16)twI * (_Float16)t1a;</span>
+<span id="L459"><span class="lineNum">     459</span>              :       u = (_Float16)twR * (_Float16)t1b;</span>
+<span id="L460"><span class="lineNum">     460</span>              : </span>
+<span id="L461"><span class="lineNum">     461</span>              :       // real(tw * (xA - xB)) = twR * (xAR - xBR) - twI * (xAI - xBI);</span>
+<span id="L462"><span class="lineNum">     462</span>              :       // imag(tw * (xA - xB)) = twI * (xAR - xBR) + twR * (xAI - xBI);</span>
+<span id="L463"><span class="lineNum">     463</span>              :       *pOut++ = 0.5f16 * ((_Float16)xAR + (_Float16)xBR - (_Float16)r - (_Float16)s ); //xAR</span>
+<span id="L464"><span class="lineNum">     464</span>              :       *pOut++ = 0.5f16 * ((_Float16)xAI - (_Float16)xBI + (_Float16)t - (_Float16)u ); //xAI</span>
+<span id="L465"><span class="lineNum">     465</span>              : </span>
+<span id="L466"><span class="lineNum">     466</span>              :       pA += 2;</span>
+<span id="L467"><span class="lineNum">     467</span>              :       pB -= 2;</span>
+<span id="L468"><span class="lineNum">     468</span>              :       k--;</span>
+<span id="L469"><span class="lineNum">     469</span>              :    }</span>
+<span id="L470"><span class="lineNum">     470</span>              : </span>
+<span id="L471"><span class="lineNum">     471</span>              : }</span>
+<span id="L472"><span class="lineNum">     472</span>              : </span>
+<span id="L473"><span class="lineNum">     473</span>              : #endif /* defined(ARM_MATH_MVEF) &amp;&amp; !defined(ARM_MATH_AUTOVECTORIZE) */</span>
+<span id="L474"><span class="lineNum">     474</span>              : </span>
+<span id="L475"><span class="lineNum">     475</span>              : /**</span>
+<span id="L476"><span class="lineNum">     476</span>              :   @ingroup RealFFT</span>
+<span id="L477"><span class="lineNum">     477</span>              : */</span>
+<span id="L478"><span class="lineNum">     478</span>              : </span>
+<span id="L479"><span class="lineNum">     479</span>              : /**</span>
+<span id="L480"><span class="lineNum">     480</span>              :   @defgroup RealFFTF16 Real FFT F16 Functions</span>
+<span id="L481"><span class="lineNum">     481</span>              : */</span>
+<span id="L482"><span class="lineNum">     482</span>              : </span>
+<span id="L483"><span class="lineNum">     483</span>              : /**</span>
+<span id="L484"><span class="lineNum">     484</span>              :   @addtogroup RealFFTF16</span>
+<span id="L485"><span class="lineNum">     485</span>              :   @{</span>
+<span id="L486"><span class="lineNum">     486</span>              : */</span>
+<span id="L487"><span class="lineNum">     487</span>              : </span>
+<span id="L488"><span class="lineNum">     488</span>              : /**</span>
+<span id="L489"><span class="lineNum">     489</span>              :   @brief         Processing function for the floating-point real FFT.</span>
+<span id="L490"><span class="lineNum">     490</span>              :   @param[in]     S         points to an arm_rfft_fast_instance_f16 structure</span>
+<span id="L491"><span class="lineNum">     491</span>              :   @param[in]     p         points to input buffer (Source buffer is modified by this function.)</span>
+<span id="L492"><span class="lineNum">     492</span>              :   @param[in]     pOut      points to output buffer</span>
+<span id="L493"><span class="lineNum">     493</span>              :   @param[in]     ifftFlag</span>
+<span id="L494"><span class="lineNum">     494</span>              :                    - value = 0: RFFT</span>
+<span id="L495"><span class="lineNum">     495</span>              :                    - value = 1: RIFFT</span>
+<span id="L496"><span class="lineNum">     496</span>              : </span>
+<span id="L497"><span class="lineNum">     497</span>              :   @par Size of buffers according to the target architecture and datatype:</span>
+<span id="L498"><span class="lineNum">     498</span>              :        They are described on the page \ref transformbuffers &quot;transform buffers&quot;.</span>
+<span id="L499"><span class="lineNum">     499</span>              : */</span>
+<span id="L500"><span class="lineNum">     500</span>              : #if defined(ARM_MATH_NEON_FLOAT16) </span>
+<span id="L501"><span class="lineNum">     501</span>              : </span>
+<span id="L502"><span class="lineNum">     502</span>              : #include &quot;CMSIS_NE10_types.h&quot;</span>
+<span id="L503"><span class="lineNum">     503</span>              : #include &quot;CMSIS_NE10_fft.h&quot;</span>
+<span id="L504"><span class="lineNum">     504</span>              : </span>
+<span id="L505"><span class="lineNum">     505</span>              : ARM_DSP_ATTRIBUTE void arm_rfft_fast_f16(</span>
+<span id="L506"><span class="lineNum">     506</span>              :   const arm_rfft_fast_instance_f16 * S,</span>
+<span id="L507"><span class="lineNum">     507</span>              :   const float16_t * p,</span>
+<span id="L508"><span class="lineNum">     508</span>              :   float16_t * pOut,</span>
+<span id="L509"><span class="lineNum">     509</span>              :   float16_t *tmpbuf,</span>
+<span id="L510"><span class="lineNum">     510</span>              :   uint8_t ifftFlag)</span>
+<span id="L511"><span class="lineNum">     511</span>              : {</span>
+<span id="L512"><span class="lineNum">     512</span>              : /* Calculation of Real FFT */</span>
+<span id="L513"><span class="lineNum">     513</span>              :    if (!ifftFlag)</span>
+<span id="L514"><span class="lineNum">     514</span>              :    {</span>
+<span id="L515"><span class="lineNum">     515</span>              :      arm_ne10_fft_r2c_1d_float16_neon (S,p,pOut,tmpbuf);</span>
+<span id="L516"><span class="lineNum">     516</span>              :    }</span>
+<span id="L517"><span class="lineNum">     517</span>              :    else </span>
+<span id="L518"><span class="lineNum">     518</span>              :    {</span>
+<span id="L519"><span class="lineNum">     519</span>              :      arm_ne10_fft_c2r_1d_float16_neon (S,p,pOut,tmpbuf);</span>
+<span id="L520"><span class="lineNum">     520</span>              :    }</span>
+<span id="L521"><span class="lineNum">     521</span>              : }</span>
+<span id="L522"><span class="lineNum">     522</span>              : </span>
+<span id="L523"><span class="lineNum">     523</span>              : #else</span>
+<span id="L524"><span class="lineNum">     524</span>              : ARM_DSP_ATTRIBUTE void arm_rfft_fast_f16(</span>
+<span id="L525"><span class="lineNum">     525</span>              :   const arm_rfft_fast_instance_f16 * S,</span>
+<span id="L526"><span class="lineNum">     526</span>              :   float16_t * p,</span>
+<span id="L527"><span class="lineNum">     527</span>              :   float16_t * pOut,</span>
+<span id="L528"><span class="lineNum">     528</span>              :   uint8_t ifftFlag)</span>
+<span id="L529"><span class="lineNum">     529</span> <span class="tlaGNC tlaBgGNC">           1 : {</span></span>
+<span id="L530"><span class="lineNum">     530</span>              :    const arm_cfft_instance_f16 * Sint = &amp;(S-&gt;Sint);</span>
+<span id="L531"><span class="lineNum">     531</span>              : </span>
+<span id="L532"><span class="lineNum">     532</span>              : </span>
+<span id="L533"><span class="lineNum">     533</span>              :    /* Calculation of Real FFT */</span>
+<span id="L534"><span class="lineNum">     534</span> <span class="tlaGNC">           1 :    if (ifftFlag)</span></span>
+<span id="L535"><span class="lineNum">     535</span>              :    {</span>
+<span id="L536"><span class="lineNum">     536</span>              :       /*  Real FFT compression */</span>
+<span id="L537"><span class="lineNum">     537</span> <span class="tlaUNC tlaBgUNC">           0 :       merge_rfft_f16(S, p, pOut);</span></span>
+<span id="L538"><span class="lineNum">     538</span>              :       /* Complex radix-4 IFFT process */</span>
+<span id="L539"><span class="lineNum">     539</span> <span class="tlaUNC">           0 :       arm_cfft_f16( Sint, pOut, ifftFlag, 1);</span></span>
+<span id="L540"><span class="lineNum">     540</span>              :    }</span>
+<span id="L541"><span class="lineNum">     541</span>              :    else</span>
+<span id="L542"><span class="lineNum">     542</span>              :    {</span>
+<span id="L543"><span class="lineNum">     543</span>              : </span>
+<span id="L544"><span class="lineNum">     544</span>              :       /* Calculation of RFFT of input */</span>
+<span id="L545"><span class="lineNum">     545</span> <span class="tlaGNC tlaBgGNC">           1 :       arm_cfft_f16( Sint, p, ifftFlag, 1);</span></span>
+<span id="L546"><span class="lineNum">     546</span>              : </span>
+<span id="L547"><span class="lineNum">     547</span>              :       /*  Real FFT extraction */</span>
+<span id="L548"><span class="lineNum">     548</span> <span class="tlaGNC">           1 :       stage_rfft_f16(S, p, pOut);</span></span>
+<span id="L549"><span class="lineNum">     549</span>              :    }</span>
+<span id="L550"><span class="lineNum">     550</span> <span class="tlaGNC">           1 : }</span></span>
+<span id="L551"><span class="lineNum">     551</span>              : #endif</span>
+<span id="L552"><span class="lineNum">     552</span>              : /**</span>
+<span id="L553"><span class="lineNum">     553</span>              : * @} end of RealFFTF16 group</span>
+<span id="L554"><span class="lineNum">     554</span>              : */</span>
+<span id="L555"><span class="lineNum">     555</span>              : </span>
+<span id="L556"><span class="lineNum">     556</span>              : #endif /*  #if defined(ARM_FLOAT16_SUPPORTED) */</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

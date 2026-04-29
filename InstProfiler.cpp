@@ -36,11 +36,21 @@
 #include <algorithm> // std::copy, std::find_if
 #include <atomic>
 #include <cctype>  // std::tolower
-#include <csignal> // sigaction, SIGINT, SIGTERM
+#include <csignal> // signal / sigaction, SIGINT, SIGTERM
 #include <cstdio>
 #include <cstdlib>  // strtol, strtod
 #include <cstring>  // strncpy, strcmp
+
+// Windows compatibility: MSVC does not provide <cxxabi.h> or sigaction().
+// - Demangling: MSVC uses UnDecorateSymbolName() from <DbgHelp.h>.
+// - Signals:    MSVC only provides signal(), not sigaction/sigemptyset.
+#ifdef _WIN32
+#include <windows.h>
+#include <DbgHelp.h> // UnDecorateSymbolName
+#pragma comment(lib, "DbgHelp.lib")
+#else
 #include <cxxabi.h> // abi::__cxa_demangle  (GCC / Clang)
+#endif
 
 static bool ParseBoolParam(const std::string &val)
 {
@@ -80,6 +90,8 @@ typedef enum
     PARAM_MAX_NAME_LEN,       ///< Max demangled name length (0 = unlimited)
     PARAM_STATS_FILE,         ///< Write self/wall function stats CSV ("" = disabled)
     PARAM_FLAMEGRAPH_FILE,    ///< Write folded-stack flamegraph input ("" = disabled)
+    PARAM_LCOV_FILE,          ///< Write LCOV source-line coverage ("" = disabled)
+    PARAM_ADDR2LINE_TOOL,     ///< addr2line executable for LCOV PC→line resolution
     PARAM_COUNT               ///< Sentinel — total number of parameters
 } ParamID;
 
@@ -323,6 +335,31 @@ static const eslapi::CADIParameterInfo_t kParamInfos[PARAM_COUNT] = {
                                 0,
                                 0,
                                 ""),
+
+    eslapi::CADIParameterInfo_t(PARAM_LCOV_FILE,
+                                "lcov-file",
+                                eslapi::CADI_PARAM_STRING,
+                                "If set, write source-line coverage in LCOV format to this path. "
+                                "Requires a debug-info ELF in symbol-file and a working addr2line-tool. "
+                                "Use genhtml(1) from the lcov package to produce HTML reports. "
+                                "Empty string = disabled (default).",
+                                false,
+                                0,
+                                0,
+                                0,
+                                ""),
+
+    eslapi::CADIParameterInfo_t(PARAM_ADDR2LINE_TOOL,
+                                "addr2line-tool",
+                                eslapi::CADI_PARAM_STRING,
+                                "addr2line executable used by the lcov-file feature to map PC addresses "
+                                "to source file and line numbers.  Use e.g. 'arm-none-eabi-addr2line' "
+                                "for bare-metal binaries.  Default: addr2line.",
+                                false,
+                                0,
+                                0,
+                                0,
+                                "addr2line"),
 };
 
 // ==========================================================================
@@ -334,6 +371,28 @@ static const eslapi::CADIParameterInfo_t kParamInfos[PARAM_COUNT] = {
 // ==========================================================================
 
 static std::atomic<InstProfiler *> g_instance{nullptr};
+
+#ifdef _WIN32
+// On Windows, signal() only provides basic SIGINT handling.
+// We store the previous handler via signal() and restore it on re-raise.
+static void (*g_old_sigint)(int) = SIG_DFL;
+static void (*g_old_sigterm)(int) = SIG_DFL;
+
+static void SignalHandler(int sig)
+{
+    InstProfiler *inst = g_instance.load(std::memory_order_relaxed);
+    if (inst)
+        inst->Finalize();
+
+    // Restore the original handler and re-raise so the FVP can exit.
+    if (sig == SIGINT)
+        signal(SIGINT, g_old_sigint);
+    else
+        signal(SIGTERM, g_old_sigterm);
+
+    raise(sig);
+}
+#else
 static struct sigaction g_old_sigint;
 static struct sigaction g_old_sigterm;
 
@@ -360,6 +419,7 @@ static void SignalHandler(int sig)
 
     raise(sig);
 }
+#endif
 
 // ==========================================================================
 // InstProfiler constructor / destructor
@@ -612,6 +672,7 @@ void InstProfiler::Finalize()
     WriteCoverageJson();
     WriteStatsCSV();
     WriteFlamegraphFolded();
+    WriteLcov();
 }
 
 // ==========================================================================
@@ -732,6 +793,12 @@ InstProfiler::GetParameterValues(uint32_t count, uint32_t *actualRead, eslapi::C
         case PARAM_FLAMEGRAPH_FILE:
             copy_str(out[i].stringValue, param_flamegraph_file_);
             break;
+        case PARAM_LCOV_FILE:
+            copy_str(out[i].stringValue, param_lcov_file_);
+            break;
+        case PARAM_ADDR2LINE_TOOL:
+            copy_str(out[i].stringValue, param_addr2line_tool_);
+            break;
         default:
             if (actualRead)
                 *actualRead = i;
@@ -834,6 +901,13 @@ eslapi::CADIReturn_t InstProfiler::ApplyParameters(uint32_t count, eslapi::CADIP
         case PARAM_FLAMEGRAPH_FILE:
             param_flamegraph_file_ = val;
             flamegraph_enabled_ = !val.empty();
+            break;
+        case PARAM_LCOV_FILE:
+            param_lcov_file_ = val;
+            lcov_enabled_ = !val.empty();
+            break;
+        case PARAM_ADDR2LINE_TOOL:
+            param_addr2line_tool_ = val;
             break;
         default:
             fprintf(stderr, "[InstProfiler] Unknown parameter ID %u\n", values[i].parameterID);
@@ -1027,10 +1101,10 @@ void InstProfiler::TracePC(const MTI::EventClass *event_class, const MTI::EventR
 
     // ----------------------------------------------------------------
     // 2.6  Coverage tracking: record this PC as visited for its symbol.
-    //      Gated by coverage_enabled_ (a bool set once at parameter time)
-    //      so the branch is free when coverage is disabled.
+    //      Gated by coverage_enabled_ or lcov_enabled_ (bools set once
+    //      at parameter time) so the branch is free when both are off.
     // ----------------------------------------------------------------
-    if (coverage_enabled_)
+    if (coverage_enabled_ || lcov_enabled_)
         coverage_map_[sym].insert(static_cast<uint32_t>(pc));
 
     // ----------------------------------------------------------------
@@ -1196,13 +1270,21 @@ const std::string &InstProfiler::Demangle(const std::string &mangled)
     if (it != demangle_cache_.end())
         return it->second;
 
-    // Attempt C++ demangling using the ABI runtime.
-    // abi::__cxa_demangle returns a malloc()-allocated string on success,
-    // or nullptr if the name is not a valid mangled C++ name.
+    // Attempt C++ demangling.
+    // GCC/Clang use abi::__cxa_demangle; MSVC uses UnDecorateSymbolName.
+    std::string demangled;
+
+#ifdef _WIN32
+    char undec_buf[2048];
+    DWORD result = UnDecorateSymbolName(mangled.c_str(), undec_buf, sizeof(undec_buf), UNDNAME_COMPLETE);
+    if (result > 0)
+        demangled = undec_buf;
+    else
+        demangled = mangled;
+#else
     int status = 0;
     char *result = abi::__cxa_demangle(mangled.c_str(), nullptr, nullptr, &status);
 
-    std::string demangled;
     if (status == 0 && result != nullptr)
     {
         demangled = result;
@@ -1213,6 +1295,7 @@ const std::string &InstProfiler::Demangle(const std::string &mangled)
         // Not a C++ mangled name (or demangling failed) — use as-is.
         demangled = mangled;
     }
+#endif
 
     // If the demangled name exceeds the configured limit, truncate it for
     // display after demangling. This preserves readable C++ names instead of
@@ -1240,6 +1323,10 @@ void InstProfiler::InstallSignalHandlers()
     // Register this instance as the target of the signal handler.
     g_instance.store(this, std::memory_order_relaxed);
 
+#ifdef _WIN32
+    g_old_sigint = signal(SIGINT, SignalHandler);
+    g_old_sigterm = signal(SIGTERM, SignalHandler);
+#else
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = SignalHandler;
@@ -1248,6 +1335,7 @@ void InstProfiler::InstallSignalHandlers()
 
     sigaction(SIGINT, &sa, &g_old_sigint);
     sigaction(SIGTERM, &sa, &g_old_sigterm);
+#endif
 }
 
 void InstProfiler::RemoveSignalHandlers()
@@ -1256,8 +1344,13 @@ void InstProfiler::RemoveSignalHandlers()
     InstProfiler *expected = this;
     if (g_instance.compare_exchange_strong(expected, nullptr, std::memory_order_relaxed))
     {
+#ifdef _WIN32
+        signal(SIGINT, g_old_sigint);
+        signal(SIGTERM, g_old_sigterm);
+#else
         sigaction(SIGINT, &g_old_sigint, nullptr);
         sigaction(SIGTERM, &g_old_sigterm, nullptr);
+#endif
     }
 }
 

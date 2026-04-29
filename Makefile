@@ -30,6 +30,7 @@ CXXFLAGS = -std=c++14 -Wall -Wextra -O2 -fPIC
 SRCS = InstProfiler.cpp \
        Coverage.cpp    \
        Flamegraph.cpp  \
+       Lcov.cpp        \
        Stats.cpp       \
        JsonWriter.cpp  \
        SymbolTable.cpp

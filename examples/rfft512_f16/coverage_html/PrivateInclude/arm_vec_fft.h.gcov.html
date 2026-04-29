@@ -1,0 +1,401 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - PrivateInclude/arm_vec_fft.h</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">PrivateInclude</a> - arm_vec_fft.h<span style="font-size: 80%;"> (source / <a href="arm_vec_fft.h.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">56.1&nbsp;%</td>
+            <td class="headerCovTableEntry">41</td>
+            <td class="headerCovTableEntry">23</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-04-29 10:21:44</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">1</td>
+          </tr>
+                  <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /******************************************************************************</span>
+<span id="L2"><span class="lineNum">       2</span>              :  * @file     arm_vec_fft.h</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * @brief    Private header file for CMSIS DSP Library</span>
+<span id="L4"><span class="lineNum">       4</span>              :  * @version  V1.7.0</span>
+<span id="L5"><span class="lineNum">       5</span>              :  * @date     07. January 2020</span>
+<span id="L6"><span class="lineNum">       6</span>              :  ******************************************************************************/</span>
+<span id="L7"><span class="lineNum">       7</span>              : /*</span>
+<span id="L8"><span class="lineNum">       8</span>              :  * Copyright (c) 2010-2020 Arm Limited or its affiliates. All rights reserved.</span>
+<span id="L9"><span class="lineNum">       9</span>              :  *</span>
+<span id="L10"><span class="lineNum">      10</span>              :  * SPDX-License-Identifier: Apache-2.0</span>
+<span id="L11"><span class="lineNum">      11</span>              :  *</span>
+<span id="L12"><span class="lineNum">      12</span>              :  * Licensed under the Apache License, Version 2.0 (the License); you may</span>
+<span id="L13"><span class="lineNum">      13</span>              :  * not use this file except in compliance with the License.</span>
+<span id="L14"><span class="lineNum">      14</span>              :  * You may obtain a copy of the License at</span>
+<span id="L15"><span class="lineNum">      15</span>              :  *</span>
+<span id="L16"><span class="lineNum">      16</span>              :  * www.apache.org/licenses/LICENSE-2.0</span>
+<span id="L17"><span class="lineNum">      17</span>              :  *</span>
+<span id="L18"><span class="lineNum">      18</span>              :  * Unless required by applicable law or agreed to in writing, software</span>
+<span id="L19"><span class="lineNum">      19</span>              :  * distributed under the License is distributed on an AS IS BASIS, WITHOUT</span>
+<span id="L20"><span class="lineNum">      20</span>              :  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span id="L21"><span class="lineNum">      21</span>              :  * See the License for the specific language governing permissions and</span>
+<span id="L22"><span class="lineNum">      22</span>              :  * limitations under the License.</span>
+<span id="L23"><span class="lineNum">      23</span>              :  */</span>
+<span id="L24"><span class="lineNum">      24</span>              : </span>
+<span id="L25"><span class="lineNum">      25</span>              : #ifndef ARM_VEC_FFT_H_</span>
+<span id="L26"><span class="lineNum">      26</span>              : #define ARM_VEC_FFT_H_</span>
+<span id="L27"><span class="lineNum">      27</span>              : </span>
+<span id="L28"><span class="lineNum">      28</span>              : #include &quot;arm_math.h&quot;</span>
+<span id="L29"><span class="lineNum">      29</span>              : #include &quot;arm_helium_utils.h&quot;</span>
+<span id="L30"><span class="lineNum">      30</span>              : </span>
+<span id="L31"><span class="lineNum">      31</span>              : #ifdef   __cplusplus</span>
+<span id="L32"><span class="lineNum">      32</span>              : extern &quot;C&quot;</span>
+<span id="L33"><span class="lineNum">      33</span>              : {</span>
+<span id="L34"><span class="lineNum">      34</span>              : #endif</span>
+<span id="L35"><span class="lineNum">      35</span>              : </span>
+<span id="L36"><span class="lineNum">      36</span>              : #if (defined(ARM_MATH_MVEF) || defined(ARM_MATH_MVEI) || defined(ARM_MATH_HELIUM)) &amp;&amp; !defined(ARM_MATH_AUTOVECTORIZE)</span>
+<span id="L37"><span class="lineNum">      37</span>              : </span>
+<span id="L38"><span class="lineNum">      38</span>              : #define MVE_CMPLX_ADD_A_ixB(A, B)           vcaddq_rot90(A,B)</span>
+<span id="L39"><span class="lineNum">      39</span>              : #define MVE_CMPLX_SUB_A_ixB(A,B)            vcaddq_rot270(A,B)</span>
+<span id="L40"><span class="lineNum">      40</span>              : #define MVE_CMPLX_MULT_FLT_AxB(A,B)         vcmlaq_rot90(vcmulq(A, B), A, B)</span>
+<span id="L41"><span class="lineNum">      41</span>              : #define MVE_CMPLX_MULT_FLT_Conj_AxB(A,B)    vcmlaq_rot270(vcmulq(A, B), A, B)</span>
+<span id="L42"><span class="lineNum">      42</span>              : </span>
+<span id="L43"><span class="lineNum">      43</span>              : #define MVE_CMPLX_MULT_FX_AxB(A,B,TyA)      vqdmladhxq(vqdmlsdhq((TyA)vuninitializedq_s32(), A, B), A, B)</span>
+<span id="L44"><span class="lineNum">      44</span>              : #define MVE_CMPLX_MULT_FX_AxConjB(A,B,TyA)  vqdmladhq(vqdmlsdhxq((TyA)vuninitializedq_s32(), A, B), A, B)</span>
+<span id="L45"><span class="lineNum">      45</span>              : </span>
+<span id="L46"><span class="lineNum">      46</span>              : #define MVE_CMPLX_ADD_FX_A_ixB(A, B)        vhcaddq_rot90(A,B)</span>
+<span id="L47"><span class="lineNum">      47</span>              : #define MVE_CMPLX_SUB_FX_A_ixB(A,B)         vhcaddq_rot270(A,B)</span>
+<span id="L48"><span class="lineNum">      48</span>              : </span>
+<span id="L49"><span class="lineNum">      49</span>              : </span>
+<span id="L50"><span class="lineNum">      50</span>              : /**</span>
+<span id="L51"><span class="lineNum">      51</span>              :   @brief         In-place 32 bit reversal function for helium</span>
+<span id="L52"><span class="lineNum">      52</span>              :   @param[in,out] pSrc        points to in-place buffer of unknown 32-bit data type</span>
+<span id="L53"><span class="lineNum">      53</span>              :   @param[in]     bitRevLen   bit reversal table length</span>
+<span id="L54"><span class="lineNum">      54</span>              :   @param[in]     pBitRevTab  points to bit reversal table</span>
+<span id="L55"><span class="lineNum">      55</span>              :   @return        none</span>
+<span id="L56"><span class="lineNum">      56</span>              : */</span>
+<span id="L57"><span class="lineNum">      57</span>              : </span>
+<span id="L58"><span class="lineNum">      58</span>              : __STATIC_INLINE void arm_bitreversal_32_inpl_mve(</span>
+<span id="L59"><span class="lineNum">      59</span>              :         uint32_t *pSrc,</span>
+<span id="L60"><span class="lineNum">      60</span>              :   const uint16_t  bitRevLen,</span>
+<span id="L61"><span class="lineNum">      61</span>              :   const uint16_t *pBitRevTab)</span>
+<span id="L62"><span class="lineNum">      62</span>              : </span>
+<span id="L63"><span class="lineNum">      63</span>              : {</span>
+<span id="L64"><span class="lineNum">      64</span>              :     uint64_t       *src = (uint64_t *) pSrc;</span>
+<span id="L65"><span class="lineNum">      65</span>              :     int32_t         blkCnt;     /* loop counters */</span>
+<span id="L66"><span class="lineNum">      66</span>              :     uint32x4_t      bitRevTabOff;</span>
+<span id="L67"><span class="lineNum">      67</span>              :     uint32x4_t      one = vdupq_n_u32(1);</span>
+<span id="L68"><span class="lineNum">      68</span>              :     uint64x2_t      inLow, inHigh;</span>
+<span id="L69"><span class="lineNum">      69</span>              :     uint64x2_t      bitRevOff1Low, bitRevOff0Low;</span>
+<span id="L70"><span class="lineNum">      70</span>              :     uint64x2_t      bitRevOff1High, bitRevOff0High;</span>
+<span id="L71"><span class="lineNum">      71</span>              : </span>
+<span id="L72"><span class="lineNum">      72</span>              :     /* load scheduling to increase gather load idx update / gather load distance */</span>
+<span id="L73"><span class="lineNum">      73</span>              :     bitRevTabOff = vldrhq_u32(pBitRevTab);</span>
+<span id="L74"><span class="lineNum">      74</span>              :     pBitRevTab += 4;</span>
+<span id="L75"><span class="lineNum">      75</span>              : </span>
+<span id="L76"><span class="lineNum">      76</span>              :     bitRevOff0Low = vmullbq_int_u32(bitRevTabOff, one);</span>
+<span id="L77"><span class="lineNum">      77</span>              :     bitRevOff0High = vmulltq_int_u32(bitRevTabOff, one);</span>
+<span id="L78"><span class="lineNum">      78</span>              : </span>
+<span id="L79"><span class="lineNum">      79</span>              : </span>
+<span id="L80"><span class="lineNum">      80</span>              :     blkCnt = bitRevLen / 8;</span>
+<span id="L81"><span class="lineNum">      81</span>              :     while (blkCnt &gt; 0) {</span>
+<span id="L82"><span class="lineNum">      82</span>              :         bitRevTabOff = vldrhq_u32(pBitRevTab);</span>
+<span id="L83"><span class="lineNum">      83</span>              :         pBitRevTab += 4;</span>
+<span id="L84"><span class="lineNum">      84</span>              : </span>
+<span id="L85"><span class="lineNum">      85</span>              :         /* 64-bit index expansion */</span>
+<span id="L86"><span class="lineNum">      86</span>              :         bitRevOff1Low = vmullbq_int_u32(bitRevTabOff, one);</span>
+<span id="L87"><span class="lineNum">      87</span>              :         bitRevOff1High = vmulltq_int_u32(bitRevTabOff, one);</span>
+<span id="L88"><span class="lineNum">      88</span>              : </span>
+<span id="L89"><span class="lineNum">      89</span>              :         inLow = vldrdq_gather_offset_u64(src, bitRevOff0Low);</span>
+<span id="L90"><span class="lineNum">      90</span>              :         inHigh = vldrdq_gather_offset_u64(src, bitRevOff0High);</span>
+<span id="L91"><span class="lineNum">      91</span>              : </span>
+<span id="L92"><span class="lineNum">      92</span>              :         vstrdq_scatter_offset_u64(src, bitRevOff0Low, inHigh);</span>
+<span id="L93"><span class="lineNum">      93</span>              :         vstrdq_scatter_offset_u64(src, bitRevOff0High, inLow);</span>
+<span id="L94"><span class="lineNum">      94</span>              : </span>
+<span id="L95"><span class="lineNum">      95</span>              : </span>
+<span id="L96"><span class="lineNum">      96</span>              :         /* unrolled */</span>
+<span id="L97"><span class="lineNum">      97</span>              :         bitRevTabOff = vldrhq_u32(pBitRevTab);</span>
+<span id="L98"><span class="lineNum">      98</span>              :         pBitRevTab += 4;</span>
+<span id="L99"><span class="lineNum">      99</span>              : </span>
+<span id="L100"><span class="lineNum">     100</span>              :         bitRevOff0Low = vmullbq_int_u32(bitRevTabOff, one);</span>
+<span id="L101"><span class="lineNum">     101</span>              :         bitRevOff0High = vmulltq_int_u32(bitRevTabOff, one);</span>
+<span id="L102"><span class="lineNum">     102</span>              : </span>
+<span id="L103"><span class="lineNum">     103</span>              :         inLow = vldrdq_gather_offset_u64(src, bitRevOff1Low);</span>
+<span id="L104"><span class="lineNum">     104</span>              :         inHigh = vldrdq_gather_offset_u64(src, bitRevOff1High);</span>
+<span id="L105"><span class="lineNum">     105</span>              : </span>
+<span id="L106"><span class="lineNum">     106</span>              :         vstrdq_scatter_offset_u64(src, bitRevOff1Low, inHigh);</span>
+<span id="L107"><span class="lineNum">     107</span>              :         vstrdq_scatter_offset_u64(src, bitRevOff1High, inLow);</span>
+<span id="L108"><span class="lineNum">     108</span>              : </span>
+<span id="L109"><span class="lineNum">     109</span>              :         /*</span>
+<span id="L110"><span class="lineNum">     110</span>              :          * Decrement the blockSize loop counter</span>
+<span id="L111"><span class="lineNum">     111</span>              :          */</span>
+<span id="L112"><span class="lineNum">     112</span>              :         blkCnt--;</span>
+<span id="L113"><span class="lineNum">     113</span>              :     }</span>
+<span id="L114"><span class="lineNum">     114</span>              : </span>
+<span id="L115"><span class="lineNum">     115</span>              :     if (bitRevLen &amp; 7) {</span>
+<span id="L116"><span class="lineNum">     116</span>              :         /* FFT size = 16 */</span>
+<span id="L117"><span class="lineNum">     117</span>              :         inLow = vldrdq_gather_offset_u64(src, bitRevOff0Low);</span>
+<span id="L118"><span class="lineNum">     118</span>              :         inHigh = vldrdq_gather_offset_u64(src, bitRevOff0High);</span>
+<span id="L119"><span class="lineNum">     119</span>              : </span>
+<span id="L120"><span class="lineNum">     120</span>              :         vstrdq_scatter_offset_u64(src, bitRevOff0Low, inHigh);</span>
+<span id="L121"><span class="lineNum">     121</span>              :         vstrdq_scatter_offset_u64(src, bitRevOff0High, inLow);</span>
+<span id="L122"><span class="lineNum">     122</span>              :     }</span>
+<span id="L123"><span class="lineNum">     123</span>              : }</span>
+<span id="L124"><span class="lineNum">     124</span>              : </span>
+<span id="L125"><span class="lineNum">     125</span>              : </span>
+<span id="L126"><span class="lineNum">     126</span>              : </span>
+<span id="L127"><span class="lineNum">     127</span>              : /**</span>
+<span id="L128"><span class="lineNum">     128</span>              :   @brief         In-place 16 bit reversal function for helium</span>
+<span id="L129"><span class="lineNum">     129</span>              :   @param[in,out] pSrc        points to in-place buffer of unknown 16-bit data type</span>
+<span id="L130"><span class="lineNum">     130</span>              :   @param[in]     bitRevLen   bit reversal table length</span>
+<span id="L131"><span class="lineNum">     131</span>              :   @param[in]     pBitRevTab  points to bit reversal table</span>
+<span id="L132"><span class="lineNum">     132</span>              :   @return        none</span>
+<span id="L133"><span class="lineNum">     133</span>              : */</span>
+<span id="L134"><span class="lineNum">     134</span>              : </span>
+<span id="L135"><span class="lineNum">     135</span>              : __STATIC_INLINE void arm_bitreversal_16_inpl_mve(</span>
+<span id="L136"><span class="lineNum">     136</span>              :         uint16_t *pSrc,</span>
+<span id="L137"><span class="lineNum">     137</span>              :   const uint16_t bitRevLen,</span>
+<span id="L138"><span class="lineNum">     138</span>              :   const uint16_t *pBitRevTab)</span>
+<span id="L139"><span class="lineNum">     139</span>              : </span>
+<span id="L140"><span class="lineNum">     140</span>              : {</span>
+<span id="L141"><span class="lineNum">     141</span>              :     uint32_t       *src = (uint32_t *) pSrc;</span>
+<span id="L142"><span class="lineNum">     142</span>              :     int32_t         blkCnt;     /* loop counters */</span>
+<span id="L143"><span class="lineNum">     143</span>              :     uint16x8_t      bitRevTabOff;</span>
+<span id="L144"><span class="lineNum">     144</span>              :     uint16x8_t      one = vdupq_n_u16(1);</span>
+<span id="L145"><span class="lineNum">     145</span>              :     uint32x4_t      bitRevOff1Low, bitRevOff0Low;</span>
+<span id="L146"><span class="lineNum">     146</span>              :     uint32x4_t      bitRevOff1High, bitRevOff0High;</span>
+<span id="L147"><span class="lineNum">     147</span>              :     uint32x4_t      inLow, inHigh;</span>
+<span id="L148"><span class="lineNum">     148</span>              : </span>
+<span id="L149"><span class="lineNum">     149</span>              :     /* load scheduling to increase gather load idx update / gather load distance */</span>
+<span id="L150"><span class="lineNum">     150</span> <span class="tlaGNC tlaBgGNC">           1 :     bitRevTabOff = vldrhq_u16(pBitRevTab);</span></span>
+<span id="L151"><span class="lineNum">     151</span>              :     pBitRevTab += 8;</span>
+<span id="L152"><span class="lineNum">     152</span>              : </span>
+<span id="L153"><span class="lineNum">     153</span> <span class="tlaGNC">           1 :     bitRevOff0Low = vmullbq_int_u16((uint16x8_t)bitRevTabOff, one);</span></span>
+<span id="L154"><span class="lineNum">     154</span> <span class="tlaGNC">           1 :     bitRevOff0High = vmulltq_int_u16((uint16x8_t)bitRevTabOff, one);</span></span>
+<span id="L155"><span class="lineNum">     155</span>              :     bitRevOff0Low = (uint32x4_t)vshrq_n_u16((uint16x8_t)bitRevOff0Low, 3);</span>
+<span id="L156"><span class="lineNum">     156</span>              :     bitRevOff0High = (uint32x4_t)vshrq_n_u16((uint16x8_t)bitRevOff0High, 3);</span>
+<span id="L157"><span class="lineNum">     157</span>              : </span>
+<span id="L158"><span class="lineNum">     158</span> <span class="tlaGNC">           1 :     blkCnt = (bitRevLen / 16);</span></span>
+<span id="L159"><span class="lineNum">     159</span> <span class="tlaGNC">           1 :     while (blkCnt &gt; 0) {</span></span>
+<span id="L160"><span class="lineNum">     160</span> <span class="tlaGNC">           1 :         bitRevTabOff = vldrhq_u16(pBitRevTab);</span></span>
+<span id="L161"><span class="lineNum">     161</span>              :         pBitRevTab += 8;</span>
+<span id="L162"><span class="lineNum">     162</span>              : </span>
+<span id="L163"><span class="lineNum">     163</span> <span class="tlaGNC">           1 :         bitRevOff1Low = vmullbq_int_u16((uint16x8_t)bitRevTabOff, one);</span></span>
+<span id="L164"><span class="lineNum">     164</span> <span class="tlaGNC">           1 :         bitRevOff1High = vmulltq_int_u16((uint16x8_t)bitRevTabOff, one);</span></span>
+<span id="L165"><span class="lineNum">     165</span> <span class="tlaGNC">           1 :         bitRevOff1Low = (uint32x4_t)vshrq_n_u16((uint16x8_t)bitRevOff1Low, 3);</span></span>
+<span id="L166"><span class="lineNum">     166</span> <span class="tlaGNC">           1 :         bitRevOff1High = (uint32x4_t)vshrq_n_u16((uint16x8_t)bitRevOff1High, 3);</span></span>
+<span id="L167"><span class="lineNum">     167</span>              : </span>
+<span id="L168"><span class="lineNum">     168</span> <span class="tlaGNC">           1 :         inLow = vldrwq_gather_shifted_offset_u32(src, bitRevOff0Low);</span></span>
+<span id="L169"><span class="lineNum">     169</span> <span class="tlaGNC">           1 :         inHigh = vldrwq_gather_shifted_offset_u32(src, bitRevOff0High);</span></span>
+<span id="L170"><span class="lineNum">     170</span>              : </span>
+<span id="L171"><span class="lineNum">     171</span> <span class="tlaGNC">           1 :         vstrwq_scatter_shifted_offset_u32(src, bitRevOff0Low, inHigh);</span></span>
+<span id="L172"><span class="lineNum">     172</span> <span class="tlaGNC">           1 :         vstrwq_scatter_shifted_offset_u32(src, bitRevOff0High, inLow);</span></span>
+<span id="L173"><span class="lineNum">     173</span>              : </span>
+<span id="L174"><span class="lineNum">     174</span>              :         /* loop unrolling */</span>
+<span id="L175"><span class="lineNum">     175</span> <span class="tlaGNC">           1 :         bitRevTabOff = vldrhq_u16(pBitRevTab);</span></span>
+<span id="L176"><span class="lineNum">     176</span>              :         pBitRevTab += 8;</span>
+<span id="L177"><span class="lineNum">     177</span>              : </span>
+<span id="L178"><span class="lineNum">     178</span> <span class="tlaGNC">           1 :         bitRevOff0Low = vmullbq_int_u16((uint16x8_t)bitRevTabOff, one);</span></span>
+<span id="L179"><span class="lineNum">     179</span> <span class="tlaGNC">           1 :         bitRevOff0High = vmulltq_int_u16((uint16x8_t)bitRevTabOff, one);</span></span>
+<span id="L180"><span class="lineNum">     180</span>              :         bitRevOff0Low = (uint32x4_t)vshrq_n_u16((uint16x8_t)bitRevOff0Low, 3);</span>
+<span id="L181"><span class="lineNum">     181</span>              :         bitRevOff0High = (uint32x4_t)vshrq_n_u16((uint16x8_t)bitRevOff0High, 3);</span>
+<span id="L182"><span class="lineNum">     182</span>              : </span>
+<span id="L183"><span class="lineNum">     183</span> <span class="tlaGNC">           1 :         inLow = vldrwq_gather_shifted_offset_u32(src, bitRevOff1Low);</span></span>
+<span id="L184"><span class="lineNum">     184</span> <span class="tlaGNC">           1 :         inHigh = vldrwq_gather_shifted_offset_u32(src, bitRevOff1High);</span></span>
+<span id="L185"><span class="lineNum">     185</span>              : </span>
+<span id="L186"><span class="lineNum">     186</span> <span class="tlaGNC">           1 :         vstrwq_scatter_shifted_offset_u32(src, bitRevOff1Low, inHigh);</span></span>
+<span id="L187"><span class="lineNum">     187</span> <span class="tlaGNC">           1 :         vstrwq_scatter_shifted_offset_u32(src, bitRevOff1High, inLow);</span></span>
+<span id="L188"><span class="lineNum">     188</span>              : </span>
+<span id="L189"><span class="lineNum">     189</span>              :         blkCnt--;</span>
+<span id="L190"><span class="lineNum">     190</span>              :     }</span>
+<span id="L191"><span class="lineNum">     191</span>              : </span>
+<span id="L192"><span class="lineNum">     192</span>              :     /* tail handling */</span>
+<span id="L193"><span class="lineNum">     193</span> <span class="tlaGNC">           1 :     blkCnt = bitRevLen &amp; 0xf;</span></span>
+<span id="L194"><span class="lineNum">     194</span> <span class="tlaGNC">           1 :     if (blkCnt == 8) {</span></span>
+<span id="L195"><span class="lineNum">     195</span> <span class="tlaUNC tlaBgUNC">           0 :         inLow = vldrwq_gather_shifted_offset_u32(src, bitRevOff0Low);</span></span>
+<span id="L196"><span class="lineNum">     196</span> <span class="tlaUNC">           0 :         inHigh = vldrwq_gather_shifted_offset_u32(src, bitRevOff0High);</span></span>
+<span id="L197"><span class="lineNum">     197</span>              : </span>
+<span id="L198"><span class="lineNum">     198</span> <span class="tlaUNC">           0 :         vstrwq_scatter_shifted_offset_u32(src, bitRevOff0Low, inHigh);</span></span>
+<span id="L199"><span class="lineNum">     199</span> <span class="tlaUNC">           0 :         vstrwq_scatter_shifted_offset_u32(src, bitRevOff0High, inLow);</span></span>
+<span id="L200"><span class="lineNum">     200</span>              :     } else if (blkCnt == 12) {</span>
+<span id="L201"><span class="lineNum">     201</span>              :         /* FFT 16 special case */</span>
+<span id="L202"><span class="lineNum">     202</span> <span class="tlaUNC">           0 :         mve_pred16_t    p = vctp16q(4);</span></span>
+<span id="L203"><span class="lineNum">     203</span>              : </span>
+<span id="L204"><span class="lineNum">     204</span> <span class="tlaUNC">           0 :         bitRevTabOff = vldrhq_z_u16(pBitRevTab, p);</span></span>
+<span id="L205"><span class="lineNum">     205</span>              : </span>
+<span id="L206"><span class="lineNum">     206</span> <span class="tlaUNC">           0 :         inLow = vldrwq_gather_shifted_offset_u32(src, bitRevOff0Low);</span></span>
+<span id="L207"><span class="lineNum">     207</span> <span class="tlaUNC">           0 :         inHigh = vldrwq_gather_shifted_offset_u32(src, bitRevOff0High);</span></span>
+<span id="L208"><span class="lineNum">     208</span>              : </span>
+<span id="L209"><span class="lineNum">     209</span> <span class="tlaUNC">           0 :         vstrwq_scatter_shifted_offset_u32(src, bitRevOff0Low, inHigh);</span></span>
+<span id="L210"><span class="lineNum">     210</span> <span class="tlaUNC">           0 :         vstrwq_scatter_shifted_offset_u32(src, bitRevOff0High, inLow);</span></span>
+<span id="L211"><span class="lineNum">     211</span>              : </span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaUNC">           0 :         bitRevOff0Low = vmullbq_int_u16((uint16x8_t)bitRevTabOff, one);</span></span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaUNC">           0 :         bitRevOff0High = vmulltq_int_u16((uint16x8_t)bitRevTabOff, one);</span></span>
+<span id="L214"><span class="lineNum">     214</span> <span class="tlaUNC">           0 :         bitRevOff0Low = (uint32x4_t)vshrq_n_u16((uint16x8_t)bitRevOff0Low, 3);</span></span>
+<span id="L215"><span class="lineNum">     215</span> <span class="tlaUNC">           0 :         bitRevOff0High = (uint32x4_t)vshrq_n_u16((uint16x8_t)bitRevOff0High, 3);</span></span>
+<span id="L216"><span class="lineNum">     216</span>              : </span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC">           0 :         inLow = vldrwq_gather_shifted_offset_z_u32(src, bitRevOff0Low, p);</span></span>
+<span id="L218"><span class="lineNum">     218</span> <span class="tlaUNC">           0 :         inHigh = vldrwq_gather_shifted_offset_z_u32(src, bitRevOff0High, p);</span></span>
+<span id="L219"><span class="lineNum">     219</span>              : </span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaUNC">           0 :         vstrwq_scatter_shifted_offset_p_u32(src, bitRevOff0Low, inHigh, p);</span></span>
+<span id="L221"><span class="lineNum">     221</span> <span class="tlaUNC">           0 :         vstrwq_scatter_shifted_offset_p_u32(src, bitRevOff0High, inLow, p);</span></span>
+<span id="L222"><span class="lineNum">     222</span>              :     }</span>
+<span id="L223"><span class="lineNum">     223</span>              : }</span>
+<span id="L224"><span class="lineNum">     224</span>              : </span>
+<span id="L225"><span class="lineNum">     225</span>              : /**</span>
+<span id="L226"><span class="lineNum">     226</span>              :   @brief         Out-of-place 32 bit reversal function for helium</span>
+<span id="L227"><span class="lineNum">     227</span>              :   @param[out]   pDst        points to destination buffer of unknown 32-bit data type</span>
+<span id="L228"><span class="lineNum">     228</span>              :   @param[in]    pSrc        points to input buffer of unknown 32-bit data type</span>
+<span id="L229"><span class="lineNum">     229</span>              :   @param[in]    fftLen      FFT length</span>
+<span id="L230"><span class="lineNum">     230</span>              :   @return       none</span>
+<span id="L231"><span class="lineNum">     231</span>              : */</span>
+<span id="L232"><span class="lineNum">     232</span>              : __STATIC_INLINE void arm_bitreversal_32_outpl_mve(void *pDst, void *pSrc, uint32_t fftLen)</span>
+<span id="L233"><span class="lineNum">     233</span>              : {</span>
+<span id="L234"><span class="lineNum">     234</span>              :     uint32x4_t      idxOffs0, idxOffs1, bitRevOffs0, bitRevOffs1;</span>
+<span id="L235"><span class="lineNum">     235</span>              :     uint32_t        bitRevPos, blkCnt;</span>
+<span id="L236"><span class="lineNum">     236</span>              :     uint32_t       *pDst32 = (uint32_t *) pDst;</span>
+<span id="L237"><span class="lineNum">     237</span>              : </span>
+<span id="L238"><span class="lineNum">     238</span>              :     /* fwd indexes */</span>
+<span id="L239"><span class="lineNum">     239</span>              :     idxOffs0 = vdupq_n_u32(0);</span>
+<span id="L240"><span class="lineNum">     240</span>              :     idxOffs1 = vdupq_n_u32(0);</span>
+<span id="L241"><span class="lineNum">     241</span>              :     idxOffs0[0] = 0;    idxOffs0[2] = 4;</span>
+<span id="L242"><span class="lineNum">     242</span>              :     idxOffs1[0] = 8;    idxOffs1[2] = 12;</span>
+<span id="L243"><span class="lineNum">     243</span>              : </span>
+<span id="L244"><span class="lineNum">     244</span>              :     bitRevPos = (31 - __CLZ(fftLen)) + 5;</span>
+<span id="L245"><span class="lineNum">     245</span>              :     blkCnt = fftLen &gt;&gt; 2;</span>
+<span id="L246"><span class="lineNum">     246</span>              : </span>
+<span id="L247"><span class="lineNum">     247</span>              :     /* issued earlier to increase gather load idx update / gather load distance */</span>
+<span id="L248"><span class="lineNum">     248</span>              :     /* bit-reverse fwd indexes */</span>
+<span id="L249"><span class="lineNum">     249</span>              :     bitRevOffs0 = vbrsrq(idxOffs0, bitRevPos);</span>
+<span id="L250"><span class="lineNum">     250</span>              :     bitRevOffs1 = vbrsrq(idxOffs1, bitRevPos);</span>
+<span id="L251"><span class="lineNum">     251</span>              :     while (blkCnt &gt; 0) {</span>
+<span id="L252"><span class="lineNum">     252</span>              :         uint64x2_t      vecIn;</span>
+<span id="L253"><span class="lineNum">     253</span>              : </span>
+<span id="L254"><span class="lineNum">     254</span>              :         vecIn = vldrdq_gather_offset_u64(pSrc, (uint64x2_t) bitRevOffs0);</span>
+<span id="L255"><span class="lineNum">     255</span>              :         idxOffs0 = idxOffs0 + 16;</span>
+<span id="L256"><span class="lineNum">     256</span>              :         vst1q(pDst32, (uint32x4_t) vecIn);</span>
+<span id="L257"><span class="lineNum">     257</span>              :         pDst32 += 4;</span>
+<span id="L258"><span class="lineNum">     258</span>              :         bitRevOffs0 = vbrsrq(idxOffs0, bitRevPos);</span>
+<span id="L259"><span class="lineNum">     259</span>              : </span>
+<span id="L260"><span class="lineNum">     260</span>              :         vecIn = vldrdq_gather_offset_u64(pSrc, (uint64x2_t) bitRevOffs1);</span>
+<span id="L261"><span class="lineNum">     261</span>              :         idxOffs1 = idxOffs1 + 16;</span>
+<span id="L262"><span class="lineNum">     262</span>              :         vst1q(pDst32, (uint32x4_t) vecIn);</span>
+<span id="L263"><span class="lineNum">     263</span>              :         pDst32 += 4;</span>
+<span id="L264"><span class="lineNum">     264</span>              :         bitRevOffs1 = vbrsrq(idxOffs1, bitRevPos);</span>
+<span id="L265"><span class="lineNum">     265</span>              : </span>
+<span id="L266"><span class="lineNum">     266</span>              :         blkCnt--;</span>
+<span id="L267"><span class="lineNum">     267</span>              :     }</span>
+<span id="L268"><span class="lineNum">     268</span>              : }</span>
+<span id="L269"><span class="lineNum">     269</span>              : </span>
+<span id="L270"><span class="lineNum">     270</span>              : </span>
+<span id="L271"><span class="lineNum">     271</span>              : /**</span>
+<span id="L272"><span class="lineNum">     272</span>              :   @brief         Out-of-place 16 bit reversal function for helium</span>
+<span id="L273"><span class="lineNum">     273</span>              :   @param[out]   pDst        points to destination buffer of unknown 16-bit data type</span>
+<span id="L274"><span class="lineNum">     274</span>              :   @param[in]    pSrc        points to input buffer of unknown 16-bit data type</span>
+<span id="L275"><span class="lineNum">     275</span>              :   @param[in]    fftLen      FFT length</span>
+<span id="L276"><span class="lineNum">     276</span>              :   @return       none</span>
+<span id="L277"><span class="lineNum">     277</span>              : */</span>
+<span id="L278"><span class="lineNum">     278</span>              : </span>
+<span id="L279"><span class="lineNum">     279</span>              : __STATIC_INLINE void arm_bitreversal_16_outpl_mve(void *pDst, void *pSrc, uint32_t fftLen)</span>
+<span id="L280"><span class="lineNum">     280</span>              : {</span>
+<span id="L281"><span class="lineNum">     281</span>              :     uint32x4_t      idxOffs0, idxOffs1, bitRevOffs0, bitRevOffs1;</span>
+<span id="L282"><span class="lineNum">     282</span>              :     uint32_t        bitRevPos, blkCnt;</span>
+<span id="L283"><span class="lineNum">     283</span>              :     uint16_t       *pDst16 = (uint16_t *) pDst;</span>
+<span id="L284"><span class="lineNum">     284</span>              :     uint32_t        incrIdx = 0;</span>
+<span id="L285"><span class="lineNum">     285</span>              : </span>
+<span id="L286"><span class="lineNum">     286</span>              :     /* fwd indexes */</span>
+<span id="L287"><span class="lineNum">     287</span>              :     idxOffs0 = vidupq_wb_u32(&amp;incrIdx, 4);    // {0, 4, 8, 12}</span>
+<span id="L288"><span class="lineNum">     288</span>              :     idxOffs1 = vidupq_wb_u32(&amp;incrIdx, 4);    // {16, 20, 24, 28}</span>
+<span id="L289"><span class="lineNum">     289</span>              : </span>
+<span id="L290"><span class="lineNum">     290</span>              :     bitRevPos = (31 - __CLZ(fftLen)) + 4;</span>
+<span id="L291"><span class="lineNum">     291</span>              :     blkCnt = fftLen &gt;&gt; 3;</span>
+<span id="L292"><span class="lineNum">     292</span>              : </span>
+<span id="L293"><span class="lineNum">     293</span>              :     /* issued earlier to increase gather load idx update / gather load distance */</span>
+<span id="L294"><span class="lineNum">     294</span>              :     /* bit-reverse fwd indexes */</span>
+<span id="L295"><span class="lineNum">     295</span>              :     bitRevOffs0 = vbrsrq(idxOffs0, bitRevPos);</span>
+<span id="L296"><span class="lineNum">     296</span>              :     bitRevOffs1 = vbrsrq(idxOffs1, bitRevPos);</span>
+<span id="L297"><span class="lineNum">     297</span>              :     while (blkCnt &gt; 0) {</span>
+<span id="L298"><span class="lineNum">     298</span>              :         uint32x4_t      vecIn;</span>
+<span id="L299"><span class="lineNum">     299</span>              : </span>
+<span id="L300"><span class="lineNum">     300</span>              :         vecIn = vldrwq_gather_offset_u32(pSrc, bitRevOffs0);</span>
+<span id="L301"><span class="lineNum">     301</span>              :         idxOffs0 = idxOffs0 + 32;</span>
+<span id="L302"><span class="lineNum">     302</span>              :         vst1q(pDst16, (uint16x8_t) vecIn);</span>
+<span id="L303"><span class="lineNum">     303</span>              :         pDst16 += 8;</span>
+<span id="L304"><span class="lineNum">     304</span>              :         bitRevOffs0 = vbrsrq(idxOffs0, bitRevPos);</span>
+<span id="L305"><span class="lineNum">     305</span>              : </span>
+<span id="L306"><span class="lineNum">     306</span>              :         vecIn = vldrwq_gather_offset_u32(pSrc, bitRevOffs1);</span>
+<span id="L307"><span class="lineNum">     307</span>              :         idxOffs1 = idxOffs1 + 32;</span>
+<span id="L308"><span class="lineNum">     308</span>              :         vst1q(pDst16, (uint16x8_t) vecIn);</span>
+<span id="L309"><span class="lineNum">     309</span>              :         pDst16 += 8;</span>
+<span id="L310"><span class="lineNum">     310</span>              :         bitRevOffs1 = vbrsrq(idxOffs1, bitRevPos);</span>
+<span id="L311"><span class="lineNum">     311</span>              : </span>
+<span id="L312"><span class="lineNum">     312</span>              :         blkCnt--;</span>
+<span id="L313"><span class="lineNum">     313</span>              :     }</span>
+<span id="L314"><span class="lineNum">     314</span>              : }</span>
+<span id="L315"><span class="lineNum">     315</span>              : </span>
+<span id="L316"><span class="lineNum">     316</span>              : </span>
+<span id="L317"><span class="lineNum">     317</span>              : #endif /* (defined(ARM_MATH_MVEF) || defined(ARM_MATH_HELIUM)) &amp;&amp; !defined(ARM_MATH_AUTOVECTORIZE)*/</span>
+<span id="L318"><span class="lineNum">     318</span>              : </span>
+<span id="L319"><span class="lineNum">     319</span>              : </span>
+<span id="L320"><span class="lineNum">     320</span>              : #ifdef   __cplusplus</span>
+<span id="L321"><span class="lineNum">     321</span>              : }</span>
+<span id="L322"><span class="lineNum">     322</span>              : #endif</span>
+<span id="L323"><span class="lineNum">     323</span>              : </span>
+<span id="L324"><span class="lineNum">     324</span>              : </span>
+<span id="L325"><span class="lineNum">     325</span>              : #endif /* _ARM_VEC_FFT_H_ */</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

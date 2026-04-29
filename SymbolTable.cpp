@@ -37,6 +37,12 @@
 #include <cstring> // strncmp
 #include <sstream> // std::istringstream
 
+// Windows compatibility: MSVC names these with an underscore prefix.
+#ifdef _WIN32
+#define popen _popen
+#define pclose _pclose
+#endif
+
 // ---------------------------------------------------------------------------
 // Public: Load
 // ---------------------------------------------------------------------------

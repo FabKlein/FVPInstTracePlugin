@@ -49,8 +49,9 @@ When `capture-function` is set the plugin silently maintains the call stack **be
 | Per-function coverage | `coverage-file=<path>` | JSON array, sorted by covered bytes |
 | Per-function statistics | `stats-file=<path>` | CSV, sorted by `self_sum_us` |
 | Flamegraph folded stacks | `flamegraph-file=<path>` | Folded-stack text for [flamegraph.pl](https://github.com/brendangregg/FlameGraph) |
+| LCOV source-line coverage | `lcov-file=<path>` | LCOV tracefile for [genhtml](https://github.com/linux-test-project/lcov) |
 
-All three are independent and can be used in any combination.  Setting none of `output-file`, `coverage-file`, `stats-file`, or `flamegraph-file` is valid — the plugin still attaches and runs but produces no output files.
+All outputs are independent and can be used in any combination.  Setting none of the output parameters is valid — the plugin still attaches and runs but produces no output files.
 
 The Chrome Tracing JSON is written incrementally to disk.  The file is valid even if the simulation is interrupted (Ctrl-C) because the SIGINT handler flushes all open call-stack frames and writes the closing `]` before the process exits.
 
@@ -167,8 +168,10 @@ When combining symbol-based start with `start-pc` or `start-count`, the earliest
 | `coverage-file` | `""` | If set, write a per-function code coverage JSON to this path at the end of the run.  Each entry records unique retired PC values and an estimated byte count.  Sorted by `covered_bytes` descending.  Empty = disabled. |
 | `stats-file` | `""` | If set, write a per-function performance statistics CSV to this path.  Columns: `name`, `count`, `wall_sum_us`, `self_sum_us`, `wall_avg_us`, `self_avg_us`.  `self_sum_us` excludes time in callees.  Sorted by `self_sum_us` descending.  Empty = disabled. |
 | `flamegraph-file` | `""` | If set, write a folded-stack file compatible with Brendan Gregg’s [flamegraph.pl](https://github.com/brendangregg/FlameGraph).  Each line is `caller;callee;... count` where count is self-time in raw instruction ticks.  Pipe through `flamegraph.pl` to produce an interactive SVG.  Empty = disabled. |
+| `lcov-file` | `""` | If set, write an LCOV tracefile mapping executed PCs to source lines via `addr2line`.  Requires `symbol-file` to point to an ELF with DWARF debug info (compiled with `-g`).  The output can be fed to `genhtml` to produce an HTML coverage report.  Empty = disabled. |
+| `addr2line-tool` | `"addr2line"` | Path or name of the addr2line binary used by `lcov-file`.  For cross-compiled targets set this to the toolchain variant, e.g. `arm-none-eabi-addr2line`. |
 
-Both outputs are independent of `output-file` — you can produce coverage and/or statistics without writing any JSON trace.
+All analysis outputs are independent of `output-file` — you can produce coverage, statistics, flamegraph, and/or LCOV without writing any JSON trace.
 
 ## Usage examples
 
@@ -268,6 +271,8 @@ FVP_Corstone_SSE-300_Ethos-U55 \
     -C TRACE.InstProfiler.coverage-file=coverage.json \
     -C TRACE.InstProfiler.stats-file=stats.csv \
     -C TRACE.InstProfiler.flamegraph-file=folded.txt \
+    -C TRACE.InstProfiler.lcov-file=coverage.info \
+    -C TRACE.InstProfiler.addr2line-tool=arm-none-eabi-addr2line \
     -C TRACE.InstProfiler.demangle=1 \
     -C TRACE.InstProfiler.tid=1
 ```
@@ -277,6 +282,7 @@ Expected generated files in `examples/rfft512_f16`:
 - `coverage.json` (per-function coverage)
 - `stats.csv` (per-function wall/self statistics)
 - `folded.txt` (flamegraph folded stacks — pipe through `flamegraph.pl` to get an SVG)
+- `coverage.info` (LCOV tracefile — pipe through `genhtml` to get an HTML report)
 
 ### Optional offline HTML conversion (Catapult trace2html)
 
@@ -371,6 +377,29 @@ git clone https://github.com/brendangregg/FlameGraph
 
 Open `flame.svg` in any browser.  Click a box to zoom, Ctrl-F to search.
 
+### LCOV tracefile (`lcov-file`)
+
+An [LCOV tracefile](https://ltp.sourceforge.net/coverage/lcov/geninfo.1.php) mapping retired PCs back to source lines.  Requires:
+
+1. `symbol-file` pointing to the **ELF binary** (not nm text output).
+2. The ELF must contain DWARF debug info (`.debug_info` + `.debug_line`), i.e. compiled with `-g`.
+3. `addr2line-tool` set to the matching toolchain binary (e.g. `arm-none-eabi-addr2line`).
+
+The plugin collects all unique PCs from the coverage map, pipes them through `addr2line -e <elf> -a`, and groups the results by source file in LCOV format.
+
+To produce an HTML coverage report:
+
+```bash
+# Generate LCOV tracefile during FVP run
+-C TRACE.InstProfiler.lcov-file=coverage.info \
+-C TRACE.InstProfiler.addr2line-tool=arm-none-eabi-addr2line \
+-C TRACE.InstProfiler.symbol-file=my_app.axf
+
+# Convert to HTML (requires lcov package)
+genhtml coverage.info --output-directory coverage_html
+xdg-open coverage_html/index.html
+```
+
 ## Symbol file format
 
 Two `nm(1)` output formats are accepted:
@@ -403,6 +432,7 @@ Thumb bit (bit 0) is cleared on all addresses so that AArch32/Thumb symbols matc
 | `Coverage.cpp` | Per-function code coverage JSON output |
 | `Stats.cpp` | Per-function self/wall-time statistics CSV output |
 | `Flamegraph.cpp` | Folded-stack flamegraph output for flamegraph.pl |
+| `Lcov.cpp` | LCOV source-line coverage output via addr2line |
 | `Makefile` | Build rules |
 
 ## Limitations

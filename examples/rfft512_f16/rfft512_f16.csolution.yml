@@ -16,7 +16,7 @@ solution:
 
   build-types:
     - type: Release
-      debug: off
+      debug: on
       optimize: speed
 
   projects:
