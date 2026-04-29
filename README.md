@@ -285,9 +285,12 @@ Expected generated files in `examples/rfft512_f16`:
 - `coverage.info` (LCOV tracefile — pipe through `genhtml` to get an HTML report)
 
 Pre-generated outputs from this example are checked into the repository.  View them online:
-- [Perfetto trace](https://ui.perfetto.dev/#!/?url=https://raw.githubusercontent.com/FabKlein/FVPInstTracePlugin/main/examples/rfft512_f16/trace.json) — interactive timeline in Perfetto UI
-- [LCOV coverage report](https://htmlpreview.github.io/?https://github.com/FabKlein/FVPInstTracePlugin/blob/main/examples/rfft512_f16/coverage_html/index.html) — source-line coverage from genhtml
-- [Flamegraph SVG](https://github.com/FabKlein/FVPInstTracePlugin/blob/main/examples/rfft512_f16/flame.svg) — interactive flamegraph
+
+| Output | Preview |
+|---|---|
+| [Perfetto trace](https://ui.perfetto.dev/#!/?url=https://raw.githubusercontent.com/FabKlein/FVPInstTracePlugin/main/examples/rfft512_f16/trace.json) | [![Perfetto](examples/rfft512_f16/screenshots/perfetto_thumb.png)](https://ui.perfetto.dev/#!/?url=https://raw.githubusercontent.com/FabKlein/FVPInstTracePlugin/main/examples/rfft512_f16/trace.json) |
+| [LCOV coverage report](https://htmlpreview.github.io/?https://github.com/FabKlein/FVPInstTracePlugin/blob/main/examples/rfft512_f16/coverage_html/index.html) | [![Coverage](examples/rfft512_f16/screenshots/coverage_thumb.png)](https://htmlpreview.github.io/?https://github.com/FabKlein/FVPInstTracePlugin/blob/main/examples/rfft512_f16/coverage_html/index.html) |
+| [Flamegraph SVG](https://htmlpreview.github.io/?https://github.com/FabKlein/FVPInstTracePlugin/blob/main/examples/rfft512_f16/flame.svg) | [![Flamegraph](examples/rfft512_f16/screenshots/flamegraph_thumb.png)](https://htmlpreview.github.io/?https://github.com/FabKlein/FVPInstTracePlugin/blob/main/examples/rfft512_f16/flame.svg) |
 
 ### Optional offline HTML conversion (Catapult trace2html)
 
